@@ -3,46 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>FostHub</title>
+    <title>Xcluice</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script>
       tailwind.config = {
         darkMode: 'class',
-        theme: { extend: { fontFamily: { sans: ['Inter','sans-serif'] } } }
+        theme: { extend: { fontFamily: { sans: ['Space Grotesk','sans-serif'], body: ['Inter','sans-serif'] } } }
       }
     </script>
     <style>
-      *, *::before, *::after { 
-        box-sizing: border-box; 
-        -webkit-tap-highlight-color: transparent; 
-        outline: none; 
-        /* Master WebView Selection Shield: Lock down system-wide selection by default */
+      *, *::before, *::after {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
       }
-      
-      body { font-family: 'Inter', sans-serif; }
-      .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
-      .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-      .scrollbar-thin::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      
-      /* Glassmorphism & Deep Space Base */
-      .modal-bg { background: rgba(2,6,23,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-      .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 0 40px rgba(79, 70, 229, 0.15); }
-      
-      .thumb-iframe { width: 100%; height: 100%; border: none; pointer-events: none; display: block; }
-      .viewer-iframe { width: 100%; height: 75vh; border: none; display: block; }
-      #postMenu { position: fixed; z-index: 9999; display: none; min-width: 170px; }
-      #postMenu.open { display: block; }
-      #toastWrap { position: fixed; bottom: 80px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+      body { font-family: 'Space Grotesk', sans-serif; }
 
-      /* Explicitly ALLOW text selection in designated safe semantic nodes so copying code/text still works */
       .selectable-text, .selectable-text *, input, textarea {
         -webkit-user-select: text !important;
         -moz-user-select: text !important;
@@ -50,96 +32,287 @@
         user-select: text !important;
       }
 
-      @keyframes fadeUp { from { opacity:0; transform:translateY(12px) scale(.98) } to { opacity:1; transform:translateY(0) scale(1) } }
-      @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-      @keyframes slideRight { from { opacity:0; transform:translateX(24px) } to { opacity:1; transform:translateX(0) } }
-      @keyframes bubbleIn { from { opacity:0; transform:scale(.92) translateY(4px) } to { opacity:1; transform:scale(1) translateY(0) } }
-      @keyframes spin { to { transform: rotate(360deg) } }
+      /* ── Scrollbars ── */
+      .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+      .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+      .scrollbar-thin::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 4px; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-      .anim-modal { animation: fadeUp .24s cubic-bezier(.16,1,.3,1) both; }
-      .anim-fadein { animation: fadeIn .18s ease-out both; }
-      .anim-slide-right { animation: slideRight .24s cubic-bezier(.16,1,.3,1) both; }
-      .anim-tab { animation: fadeUp .22s ease-out both; }
-      .card-item { animation: fadeUp .25s ease-out both; transition: transform .1s ease; }
-      .card-item:active { transform: scale(.98); }
-      .chat-bubble { animation: bubbleIn .18s ease-out both; }
-      .spinner { width:24px; height:24px; border:2.5px solid rgba(99,102,241,.2); border-top-color:#6366f1; border-radius:50%; animation: spin .6s linear infinite; }
-      #fab { transition: transform .15s ease; }
+      /* ── Animated Mesh Background ── */
+      @keyframes meshShift {
+        0%   { background-position: 0% 50%; }
+        50%  { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .mesh-bg {
+        background: linear-gradient(135deg,
+          #0a0a14 0%,
+          #0e0520 25%,
+          #080d1a 50%,
+          #0a0a14 75%,
+          #050214 100%
+        );
+        background-size: 400% 400%;
+        animation: meshShift 18s ease infinite;
+      }
+      .sidebar-bg {
+        background: rgba(8, 5, 20, 0.95);
+        border-right: 1px solid rgba(139, 92, 246, 0.15);
+      }
+      .header-bg {
+        background: rgba(8, 5, 20, 0.9);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+      }
+
+      /* ── Glow accents ── */
+      .xcluice-glow { box-shadow: 0 0 24px rgba(139, 92, 246, 0.45), 0 0 48px rgba(139, 92, 246, 0.15); }
+      .xcluice-glow-sm { box-shadow: 0 0 12px rgba(139, 92, 246, 0.35); }
+      .cyan-glow { box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); }
+
+      /* ── Brand gradient text ── */
+      .brand-text {
+        background: linear-gradient(135deg, #a78bfa 0%, #22d3ee 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .brand-border { border: 1px solid rgba(139, 92, 246, 0.3); }
+
+      /* ── Glass ── */
+      .modal-bg { background: rgba(4, 2, 12, 0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+      .glass-panel {
+        background: rgba(14, 5, 32, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        box-shadow: 0 0 60px rgba(139, 92, 246, 0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+
+      /* ── Cards ── */
+      .x-card {
+        background: rgba(14, 8, 28, 0.8);
+        border: 1px solid rgba(139, 92, 246, 0.12);
+        transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+      }
+      .x-card:hover {
+        border-color: rgba(139, 92, 246, 0.35);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+      }
+      .x-card:active { transform: scale(0.985); }
+
+      /* ── Nav items ── */
+      .nav-item {
+        transition: background 0.15s ease, color 0.15s ease;
+        border-radius: 8px;
+      }
+      .nav-item.active {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+        border: 1px solid rgba(139, 92, 246, 0.25);
+      }
+      .bnav-item.active { color: #a78bfa; }
+      .bnav-item.active svg { fill: #a78bfa; color: #a78bfa; }
+
+      /* ── Inputs ── */
+      .x-input {
+        background: rgba(139, 92, 246, 0.06);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        color: #e2e8f0;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .x-input:focus {
+        border-color: rgba(139, 92, 246, 0.5);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+      }
+      .x-input::placeholder { color: rgba(139, 92, 246, 0.4); }
+
+      /* ── Buttons ── */
+      .btn-primary {
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        transition: all 0.15s ease;
+        box-shadow: 0 0 20px rgba(124, 58, 237, 0.35);
+      }
+      .btn-primary:hover { box-shadow: 0 0 28px rgba(124, 58, 237, 0.55); filter: brightness(1.08); }
+      .btn-primary:active { transform: scale(0.96); }
+
+      /* ── Logo mark ── */
+      .x-logo {
+        background: linear-gradient(135deg, #7c3aed, #22d3ee);
+        border-radius: 10px;
+        padding: 6px;
+        box-shadow: 0 0 18px rgba(124, 58, 237, 0.5);
+      }
+
+      /* ── Thumb & Viewer ── */
+      .thumb-iframe { width: 100%; height: 100%; border: none; pointer-events: none; display: block; }
+      .viewer-iframe { width: 100%; height: 75vh; border: none; display: block; }
+      #postMenu { position: fixed; z-index: 9999; display: none; min-width: 170px; }
+      #postMenu.open { display: block; }
+      #toastWrap { position: fixed; bottom: 80px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+
+      /* ── Animations ── */
+      @keyframes fadeUp { from { opacity:0; transform:translateY(14px) scale(.97) } to { opacity:1; transform:translateY(0) scale(1) } }
+      @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+      @keyframes slideRight { from { opacity:0; transform:translateX(20px) } to { opacity:1; transform:translateX(0) } }
+      @keyframes bubbleIn { from { opacity:0; transform:scale(.9) translateY(6px) } to { opacity:1; transform:scale(1) translateY(0) } }
+      @keyframes spin { to { transform: rotate(360deg) } }
+      @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 12px rgba(139,92,246,0.4); } 50% { box-shadow: 0 0 24px rgba(139,92,246,0.8); } }
+      @keyframes cardEntrance { from { opacity:0; transform:translateY(20px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+      @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+
+      .anim-modal { animation: fadeUp .26s cubic-bezier(.16,1,.3,1) both; }
+      .anim-fadein { animation: fadeIn .2s ease-out both; }
+      .anim-slide-right { animation: slideRight .22s cubic-bezier(.16,1,.3,1) both; }
+      .card-item { animation: cardEntrance .35s cubic-bezier(.16,1,.3,1) both; }
+      .card-item:nth-child(1) { animation-delay: .04s; }
+      .card-item:nth-child(2) { animation-delay: .08s; }
+      .card-item:nth-child(3) { animation-delay: .12s; }
+      .card-item:nth-child(4) { animation-delay: .16s; }
+      .card-item:nth-child(5) { animation-delay: .20s; }
+      .card-item:nth-child(6) { animation-delay: .24s; }
+      .chat-bubble { animation: bubbleIn .2s ease-out both; }
+      .spinner { width:24px; height:24px; border:2.5px solid rgba(139,92,246,.2); border-top-color:#a78bfa; border-radius:50%; animation: spin .65s linear infinite; }
+
+      /* ── X badge ── */
+      .x-badge {
+        background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(34,211,238,0.2));
+        border: 1px solid rgba(139,92,246,0.3);
+        color: #c4b5fd;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 999px;
+      }
+      #fab { transition: transform .15s ease, box-shadow .15s ease; }
       #fab:active { transform: scale(.88); }
-      .theme-active { background: white; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-radius: 6px; }
-      .dark .theme-active { background: #334155; }
-      
-      .domain-suffix-group:focus-within { border-color: #6366f1; ring: 2px solid rgba(99,102,241,0.5); }
-      .nav-item svg, .bnav-item svg { transition: fill 0.2s ease, color 0.2s ease; }
+
+      /* ── Theme toggle ── */
+      .theme-active { background: rgba(139,92,246,0.3); border: 1px solid rgba(139,92,246,0.4); border-radius: 6px; }
 
       audio { height: 38px; outline: none; border-radius: 19px; }
-      audio::-webkit-media-controls-panel { background-color: rgba(255, 255, 255, 0.95); }
-      .dark audio::-webkit-media-controls-panel { background-color: rgba(220, 225, 255, 0.9); }
+
+      /* ── Dropdown menus ── */
+      .x-dropdown {
+        background: rgba(10, 5, 22, 0.97);
+        border: 1px solid rgba(139,92,246,0.2);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 30px rgba(139,92,246,0.1);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+
+      /* ── Category strip ── */
+      .cat-pill {
+        background: rgba(139,92,246,0.08);
+        border: 1px solid rgba(139,92,246,0.18);
+        color: #a78bfa;
+        padding: 4px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s ease;
+        white-space: nowrap;
+      }
+      .cat-pill.active, .cat-pill:hover {
+        background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(34,211,238,0.15));
+        border-color: rgba(139,92,246,0.5);
+        box-shadow: 0 0 12px rgba(139,92,246,0.2);
+      }
+
+      /* Mobile bottom nav */
+      .bottom-nav {
+        background: rgba(6, 3, 14, 0.96);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(139,92,246,0.15);
+      }
+
+      /* Reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      }
     </style>
   </head>
-  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-150 overflow-hidden">
-    
+  <body class="mesh-bg text-slate-100 overflow-hidden" style="min-height:100vh;">
+
     <div class="flex h-screen overflow-hidden">
-      <!-- SIDEBAR (Desktop) -->
-      <aside class="hidden md:flex flex-col w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
-        <div class="flex items-center gap-2.5 h-12 px-4 border-b border-slate-200 dark:border-slate-700">
-          <div class="p-1.5 bg-indigo-600 rounded-lg shadow-[0_0_15px_rgba(79,70,229,0.4)]">
-            <i data-lucide="cloud" class="w-4 h-4 text-white"></i>
+
+      <!-- ═══ SIDEBAR (Desktop) ═══ -->
+      <aside class="hidden md:flex flex-col w-64 sidebar-bg shrink-0">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 h-14 px-5 border-b border-violet-900/30">
+          <div class="x-logo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/>
+            </svg>
           </div>
-          <span class="text-lg font-bold tracking-tight">FostHub</span>
+          <div>
+            <span class="text-lg font-bold tracking-tight brand-text">Xcluice</span>
+            <p class="text-[9px] text-violet-400/60 font-medium tracking-widest uppercase -mt-0.5">Web Agency</p>
+          </div>
         </div>
-        <nav class="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
-          <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer font-medium text-sm" data-filter="all" onclick="setFilter('all')">
-            <i data-lucide="home" class="w-4 h-4 shrink-0"></i>Home
+
+        <!-- Nav -->
+        <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-sm font-medium active" data-filter="all" onclick="setFilter('all')">
+            <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i>Products
           </a>
-          <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm" data-filter="media" onclick="setFilter('media')">
-            <i data-lucide="image" class="w-4 h-4 shrink-0"></i>Media
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="media" onclick="setFilter('media')">
+            <i data-lucide="monitor" class="w-4 h-4 shrink-0"></i>Previews
           </a>
-          <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm" data-filter="docs" onclick="setFilter('docs')">
-            <i data-lucide="file-text" class="w-4 h-4 shrink-0"></i>Documents
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="docs" onclick="setFilter('docs')">
+            <i data-lucide="folder-open" class="w-4 h-4 shrink-0"></i>Assets
           </a>
-          <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm" data-filter="html" onclick="setFilter('html')">
-            <i data-lucide="globe" class="w-4 h-4 shrink-0"></i>Web Apps
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="html" onclick="setFilter('html')">
+            <i data-lucide="code-2" class="w-4 h-4 shrink-0"></i>Live Demos
           </a>
-          <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm" data-filter="people" onclick="setFilter('people')">
-            <i data-lucide="message-square" class="w-4 h-4 shrink-0"></i>Chat
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="people" onclick="setFilter('people')">
+            <i data-lucide="messages-square" class="w-4 h-4 shrink-0"></i>Discussions
           </a>
-          <div class="pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
-            <p class="px-3 mb-2 text-xs uppercase text-slate-400 font-semibold tracking-wider">Manage</p>
-            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-indigo-600 dark:text-indigo-400 border border-dashed border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-slate-700 text-sm font-medium" onclick="openUpload()">
+
+          <div class="pt-4 mt-2 border-t border-violet-900/30">
+            <p class="px-3 mb-2 text-[10px] uppercase text-violet-500/50 font-bold tracking-widest">Workspace</p>
+            <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-sm font-medium text-violet-400 border border-dashed border-violet-700/50 hover:bg-violet-900/20" onclick="openUpload()">
               <i data-lucide="upload-cloud" class="w-4 h-4 shrink-0"></i>Upload
             </a>
-            <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm mt-0.5" onclick="loadPosts(true)">
+            <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm mt-0.5" onclick="loadPosts(true)">
               <i data-lucide="refresh-cw" class="w-4 h-4 shrink-0"></i>Refresh
             </a>
           </div>
         </nav>
-        <div class="p-3 border-t border-slate-200 dark:border-slate-700">
-          <div class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors relative" onclick="toggleUserMenu(event)" id="userMenu">
-            <div id="userAvatarTop" class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden shadow-sm">
+
+        <!-- User area -->
+        <div class="p-3 border-t border-violet-900/30">
+          <div class="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-violet-900/20 cursor-pointer transition-colors relative" onclick="toggleUserMenu(event)" id="userMenu">
+            <div id="userAvatarTop" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden xcluice-glow-sm">
               <span id="userInitial">?</span>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium truncate" id="userNameTop">Sign in</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400" id="userRoleLabel">Guest</p>
+              <p class="text-sm font-semibold truncate" id="userNameTop">Sign in</p>
+              <p class="text-[10px] text-violet-400/60 font-medium" id="userRoleLabel">Guest</p>
             </div>
-            <i data-lucide="chevron-up" class="w-4 h-4 text-slate-400 shrink-0"></i>
-            <div id="userDropdown" class="hidden absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
-              <div class="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700" onclick="triggerAvatarUpload()">
-                <i data-lucide="image" class="w-4 h-4 text-slate-500"></i>
-                <span class="text-sm font-medium">Change Avatar</span>
+            <i data-lucide="chevron-up" class="w-3.5 h-3.5 text-violet-400/40 shrink-0"></i>
+            <div id="userDropdown" class="hidden absolute bottom-full left-0 right-0 mb-1 x-dropdown rounded-xl overflow-hidden z-50">
+              <div class="flex items-center gap-2 p-3 border-b border-violet-800/30 cursor-pointer hover:bg-violet-900/30" onclick="triggerAvatarUpload()">
+                <i data-lucide="image" class="w-4 h-4 text-violet-400"></i>
+                <span class="text-sm font-medium text-slate-200">Change Avatar</span>
               </div>
-              <div class="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700" onclick="toggleThemeOptions(event)">
-                <i data-lucide="palette" class="w-4 h-4 text-slate-500"></i>
-                <span class="text-sm font-medium">Theme</span>
-                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400 ml-auto"></i>
+              <div class="flex items-center gap-2 p-3 border-b border-violet-800/30 cursor-pointer hover:bg-violet-900/30" onclick="toggleThemeOptions(event)">
+                <i data-lucide="palette" class="w-4 h-4 text-violet-400"></i>
+                <span class="text-sm font-medium text-slate-200">Theme</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-violet-400/40 ml-auto"></i>
               </div>
-              <div id="themeOptions" class="hidden bg-slate-50 dark:bg-slate-900 px-2 py-1.5 space-y-0.5">
-                <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-white dark:hover:bg-slate-700" data-theme="dark" onclick="setThemeFn(event,'dark')">🌙 Dark</div>
-                <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-white dark:hover:bg-slate-700" data-theme="light" onclick="setThemeFn(event,'light')">☀️ Light</div>
-                <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-white dark:hover:bg-slate-700" data-theme="system" onclick="setThemeFn(event,'system')">🖥️ System</div>
+              <div id="themeOptions" class="hidden bg-black/30 px-2 py-1.5 space-y-0.5">
+                <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-violet-900/30 text-slate-300" data-theme="dark" onclick="setThemeFn(event,'dark')">🌙 Dark</div>
+                <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-violet-900/30 text-slate-300" data-theme="light" onclick="setThemeFn(event,'light')">☀️ Light</div>
+                <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-violet-900/30 text-slate-300" data-theme="system" onclick="setThemeFn(event,'system')">🖥️ System</div>
               </div>
-              <div class="flex items-center gap-2 p-3 cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-slate-700" onclick="logOut(event)">
+              <div class="flex items-center gap-2 p-3 cursor-pointer text-red-400 hover:bg-red-900/20" onclick="logOut(event)">
                 <i data-lucide="log-out" class="w-4 h-4"></i>
                 <span class="text-sm font-medium">Sign out</span>
               </div>
@@ -148,43 +321,46 @@
         </div>
       </aside>
 
-      <!-- MAIN CONTENT -->
+      <!-- ═══ MAIN CONTENT ═══ -->
       <main class="flex-1 flex flex-col overflow-hidden min-w-0 relative">
-        
-        <!-- THIN HEADER -->
-        <header id="mainHeader" class="flex items-center justify-between h-12 px-4 md:px-6 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0 z-30 transition-all">
+
+        <!-- Header -->
+        <header id="mainHeader" class="flex items-center justify-between h-14 px-4 md:px-6 header-bg shrink-0 z-30 transition-all">
           <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 md:hidden">
-              <div class="p-1 bg-indigo-600 rounded-md shadow-[0_0_10px_rgba(79,70,229,0.4)]">
-                <i data-lucide="cloud" class="w-4 h-4 text-white"></i>
+            <!-- Mobile logo -->
+            <div class="flex items-center gap-2.5 md:hidden">
+              <div class="x-logo p-1.5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/>
+                </svg>
               </div>
-              <span class="font-bold text-base">FostHub</span>
+              <span class="font-bold text-base brand-text">Xcluice</span>
             </div>
             <div class="relative hidden sm:block">
-              <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none"></i>
-              <input id="searchInput" type="text" placeholder="Search..." class="pl-9 pr-4 py-1.5 text-sm bg-slate-100 dark:bg-slate-700 border border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-600 rounded-lg transition-all w-56 md:w-72 outline-none" oninput="handleSearch()" />
+              <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400/50 pointer-events-none"></i>
+              <input id="searchInput" type="text" placeholder="Search projects…" class="x-input pl-9 pr-4 py-2 text-sm rounded-xl w-56 md:w-72" oninput="handleSearch()" />
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5 gap-0.5">
-              <button onclick="setThemeFn(event,'light')" data-theme="light" class="theme-btn p-1.5 rounded transition-colors hover:bg-white dark:hover:bg-slate-600"><i data-lucide="sun" class="w-3.5 h-3.5"></i></button>
-              <button onclick="setThemeFn(event,'dark')" data-theme="dark" class="theme-btn p-1.5 rounded transition-colors hover:bg-white dark:hover:bg-slate-600"><i data-lucide="moon" class="w-3.5 h-3.5"></i></button>
-              <button onclick="setThemeFn(event,'system')" data-theme="system" class="theme-btn p-1.5 rounded transition-colors hover:bg-white dark:hover:bg-slate-600"><i data-lucide="monitor" class="w-3.5 h-3.5"></i></button>
+            <div class="hidden md:flex items-center bg-violet-950/60 border border-violet-800/30 rounded-lg p-0.5 gap-0.5">
+              <button onclick="setThemeFn(event,'light')" data-theme="light" class="theme-btn p-1.5 rounded transition-colors hover:bg-violet-800/30 text-violet-300"><i data-lucide="sun" class="w-3.5 h-3.5"></i></button>
+              <button onclick="setThemeFn(event,'dark')" data-theme="dark" class="theme-btn p-1.5 rounded transition-colors hover:bg-violet-800/30 text-violet-300 theme-active"><i data-lucide="moon" class="w-3.5 h-3.5"></i></button>
+              <button onclick="setThemeFn(event,'system')" data-theme="system" class="theme-btn p-1.5 rounded transition-colors hover:bg-violet-800/30 text-violet-300"><i data-lucide="monitor" class="w-3.5 h-3.5"></i></button>
             </div>
             <div class="md:hidden relative" id="userMenuMobile" onclick="toggleUserMenuMobile(event)">
-              <div id="userAvatarMobile" class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs overflow-hidden cursor-pointer border border-slate-200 dark:border-slate-600 shadow-sm">
+              <div id="userAvatarMobile" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs overflow-hidden cursor-pointer xcluice-glow-sm">
                 <span id="userInitialMobile">?</span>
               </div>
-              <div id="userDropdownMobile" class="hidden absolute top-full right-0 mt-2 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
-                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+              <div id="userDropdownMobile" class="hidden absolute top-full right-0 mt-2 w-52 x-dropdown rounded-xl overflow-hidden z-50">
+                <div class="px-4 py-3 border-b border-violet-800/30">
                   <p class="font-semibold text-sm" id="mobileUserName">Guest</p>
-                  <p class="text-xs text-slate-500" id="mobileUserEmail"></p>
+                  <p class="text-xs text-violet-400/60" id="mobileUserEmail"></p>
                 </div>
                 <div class="p-2 space-y-0.5">
-                  <button onclick="triggerAvatarUpload()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm">
-                    <i data-lucide="image" class="w-4 h-4"></i>Change Avatar
+                  <button onclick="triggerAvatarUpload()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-violet-900/30 text-sm">
+                    <i data-lucide="image" class="w-4 h-4 text-violet-400"></i>Change Avatar
                   </button>
-                  <button onclick="logOut(event)" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-slate-700 text-sm">
+                  <button onclick="logOut(event)" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-red-900/20 text-sm">
                     <i data-lucide="log-out" class="w-4 h-4"></i>Sign out
                   </button>
                 </div>
@@ -193,103 +369,102 @@
           </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto scrollbar-thin bg-slate-50 dark:bg-slate-900" id="mainScroll">
-          
-          <!-- YOUTUBE SIZED FEED VIEW -->
-          <div id="feedView" class="pb-24 md:pb-6">
-            
-            <!-- BEGIN AADS AD UNIT 2447671 -->
-            <div class="w-full pt-4 md:pt-6 pb-2" id="frame" style="margin: auto; position: relative; z-index: 20;">
-              <iframe data-aa='2447671' src='//acceptable.a-ads.com/2447671/?size=Adaptive'
-                style='border:0; padding:0; width:70%; height:auto; overflow:hidden; display: block; margin: auto;'></iframe>
-            </div>
-            <!-- END AADS AD UNIT 2447671 -->
+        <div class="flex-1 overflow-y-auto scrollbar-thin" id="mainScroll">
 
-            <div class="px-4 py-2 md:px-6 md:py-4 flex items-center justify-between max-w-3xl mx-auto">
-              <h1 class="text-xl font-bold" id="feedTitle">Recent Posts</h1>
-              <button onclick="loadPosts(true)" class="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-                Refresh <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <!-- ═══ FEED VIEW ═══ -->
+          <div id="feedView" class="pb-24 md:pb-6">
+
+            <!-- Ad -->
+            <div class="w-full pt-4 md:pt-6 pb-2" id="frame" style="margin:auto;position:relative;z-index:20;">
+              <iframe data-aa='2447671' src='//acceptable.a-ads.com/2447671/?size=Adaptive'
+                style='border:0;padding:0;width:70%;height:auto;overflow:hidden;display:block;margin:auto;'></iframe>
+            </div>
+
+            <div class="px-4 py-3 md:px-6 md:py-4 flex items-center justify-between max-w-3xl mx-auto">
+              <div>
+                <h1 class="text-xl font-bold brand-text" id="feedTitle">Products</h1>
+                <p class="text-xs text-violet-400/50 mt-0.5" id="feedSubtitle">Client work &amp; agency builds</p>
+              </div>
+              <button onclick="loadPosts(true)" class="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-200 transition-colors border border-violet-700/40 rounded-lg px-3 py-1.5 hover:bg-violet-900/20">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
               </button>
             </div>
-            
-            <div class="grid grid-cols-1 max-w-3xl mx-auto md:gap-6" id="grid">
-              <div class="flex justify-center py-16"><div class="spinner"></div></div>
+
+            <div class="grid grid-cols-1 max-w-3xl mx-auto md:gap-5 px-0 md:px-6" id="grid">
+              <div class="flex justify-center py-20"><div class="spinner" style="width:36px;height:36px;border-width:3px;"></div></div>
             </div>
           </div>
 
-          <!-- CHAT VIEW -->
+          <!-- ═══ CHAT / DISCUSSIONS VIEW ═══ -->
           <div id="chatView" class="hidden h-full">
             <div class="flex h-full">
-              <!-- People List Pane -->
-              <div id="chatListPane" class="w-full md:w-80 lg:w-96 shrink-0 flex flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center"><h2 class="text-base font-bold">Messages</h2></div>
+              <!-- People List -->
+              <div id="chatListPane" class="w-full md:w-80 lg:w-96 shrink-0 flex flex-col sidebar-bg border-r border-violet-900/30">
+                <div class="px-4 py-3 border-b border-violet-900/30 flex items-center gap-2">
+                  <i data-lucide="messages-square" class="w-4 h-4 text-violet-400"></i>
+                  <h2 class="text-sm font-bold brand-text">Discussions</h2>
+                </div>
                 <div id="peopleList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
               </div>
-              
-              <!-- Active Thread Pane (Desktop) -->
-              <div id="chatThreadPane" class="hidden md:flex flex-1 flex-col bg-slate-50 dark:bg-slate-900 min-w-0">
+
+              <!-- Thread (Desktop) -->
+              <div id="chatThreadPane" class="hidden md:flex flex-1 flex-col min-w-0" style="background:rgba(4,2,12,0.6)">
                 <div id="chatPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-8">
-                  <div class="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4"><i data-lucide="message-circle" class="w-8 h-8 text-slate-400"></i></div>
-                  <h3 class="text-lg font-medium text-slate-600 dark:text-slate-300">Select a conversation</h3>
+                  <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);">
+                    <i data-lucide="message-circle" class="w-7 h-7 text-violet-400/60"></i>
+                  </div>
+                  <h3 class="text-base font-semibold text-violet-300/60">Select a conversation</h3>
+                  <p class="text-xs text-violet-400/40 mt-1">Start a discussion with your team</p>
                 </div>
-                
                 <div id="chatThreadView" class="hidden flex-col flex-1 min-h-0">
-                  <div class="flex items-center gap-3 px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
-                    <button class="md:hidden p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" onclick="closeThread()"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-                    <div id="chatThreadAvatar" class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden shadow-sm"></div>
+                  <div class="flex items-center gap-3 px-4 py-2.5 border-b border-violet-900/30 header-bg shrink-0">
+                    <button class="md:hidden p-1.5 rounded-full hover:bg-violet-900/30" onclick="closeThread()"><i data-lucide="arrow-left" class="w-4 h-4 text-violet-400"></i></button>
+                    <div id="chatThreadAvatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden xcluice-glow-sm"></div>
                     <p class="font-semibold text-sm" id="chatThreadName">–</p>
                   </div>
-                  
                   <div id="chatMessages" class="flex-1 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3 min-h-0 selectable-text"></div>
-                  
-                  <div class="px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
-                    <!-- Text Input State -->
+                  <div class="px-4 py-2.5 border-t border-violet-900/30 header-bg shrink-0">
                     <div id="chatInputWrapper" class="flex items-center gap-2 w-full">
-                      <input id="chatInput" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-full text-sm outline-none" onkeypress="if(event.key==='Enter') sendChatMessage()" />
-                      <button onclick="startRecording(false)" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full text-slate-600 dark:text-slate-300 transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
-                      <button id="sendBtn" onclick="sendChatMessage()" class="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-full text-white shadow-sm"><i data-lucide="send" class="w-4 h-4"></i></button>
+                      <input id="chatInput" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
+                      <button onclick="startRecording(false)" class="p-2 rounded-full hover:bg-violet-900/30 text-violet-400 transition-colors" style="border:1px solid rgba(139,92,246,0.2)"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                      <button id="sendBtn" onclick="sendChatMessage()" class="p-2 btn-primary rounded-full text-white"><i data-lucide="send" class="w-4 h-4"></i></button>
                     </div>
-                    <!-- Recording Voice State -->
-                    <div id="chatRecordingWrapper" class="hidden items-center justify-between w-full bg-red-50 dark:bg-red-900/20 rounded-full px-4 py-1.5 border border-red-200 dark:border-red-800/50">
+                    <div id="chatRecordingWrapper" class="hidden items-center justify-between w-full rounded-full px-4 py-1.5" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
                       <div class="flex items-center gap-3">
                         <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                        <span class="text-sm font-semibold text-red-500 dark:text-red-400" id="recordTimer">0:00</span>
+                        <span class="text-sm font-semibold text-red-400" id="recordTimer">0:00</span>
                       </div>
                       <div class="flex items-center gap-1">
-                        <button onclick="stopRecording(true, false)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        <button onclick="stopRecording(false, false)" class="p-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-sm ml-1"><i data-lucide="send" class="w-4 h-4"></i></button>
+                        <button onclick="stopRecording(true, false)" class="p-1.5 text-slate-400 hover:text-red-400 rounded-full transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <button onclick="stopRecording(false, false)" class="p-1.5 text-white btn-primary rounded-full ml-1"><i data-lucide="send" class="w-4 h-4"></i></button>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Active Thread Overlay (Mobile) -->
-              <div id="chatThreadMobile" class="hidden fixed top-0 bottom-16 left-0 right-0 flex-col bg-slate-50 dark:bg-slate-900 z-40">
-                <div class="flex items-center gap-3 px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
-                  <button class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" onclick="closeThread()"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-                  <div id="chatThreadAvatarMobile" class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden shadow-sm"></div>
+              <!-- Thread (Mobile Overlay) -->
+              <div id="chatThreadMobile" class="hidden fixed top-0 bottom-16 left-0 right-0 flex-col z-40" style="background:rgba(4,2,12,0.97)">
+                <div class="flex items-center gap-3 px-3 py-2.5 border-b border-violet-900/30 header-bg shrink-0">
+                  <button class="p-1.5 rounded-full hover:bg-violet-900/30" onclick="closeThread()"><i data-lucide="arrow-left" class="w-4 h-4 text-violet-400"></i></button>
+                  <div id="chatThreadAvatarMobile" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden xcluice-glow-sm"></div>
                   <p class="font-semibold text-sm" id="chatThreadNameMobile">–</p>
                 </div>
-                
                 <div id="chatMessagesMobile" class="flex-1 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3 min-h-0 selectable-text"></div>
-                
-                <div class="px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
-                  <!-- Text Input State -->
+                <div class="px-4 py-2.5 border-t border-violet-900/30 header-bg shrink-0">
                   <div id="chatInputWrapperMobile" class="flex items-center gap-2 w-full">
-                    <input id="chatInputMobile" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-full text-sm outline-none" onkeypress="if(event.key==='Enter') sendChatMessage()" />
-                    <button onclick="startRecording(true)" class="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full text-slate-600 dark:text-slate-300 transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
-                    <button onclick="sendChatMessage()" class="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-full text-white shadow-sm"><i data-lucide="send" class="w-4 h-4"></i></button>
+                    <input id="chatInputMobile" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
+                    <button onclick="startRecording(true)" class="p-2 rounded-full hover:bg-violet-900/30 text-violet-400 transition-colors" style="border:1px solid rgba(139,92,246,0.2)"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                    <button onclick="sendChatMessage()" class="p-2 btn-primary rounded-full text-white"><i data-lucide="send" class="w-4 h-4"></i></button>
                   </div>
-                  <!-- Recording Voice State -->
-                  <div id="chatRecordingWrapperMobile" class="hidden items-center justify-between w-full bg-red-50 dark:bg-red-900/20 rounded-full px-4 py-1.5 border border-red-200 dark:border-red-800/50">
+                  <div id="chatRecordingWrapperMobile" class="hidden items-center justify-between w-full rounded-full px-4 py-1.5" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
                     <div class="flex items-center gap-3">
                       <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                      <span class="text-sm font-semibold text-red-500 dark:text-red-400" id="recordTimerMobile">0:00</span>
+                      <span class="text-sm font-semibold text-red-400" id="recordTimerMobile">0:00</span>
                     </div>
                     <div class="flex items-center gap-1">
-                      <button onclick="stopRecording(true, true)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-full transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                      <button onclick="stopRecording(false, true)" class="p-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-sm ml-1"><i data-lucide="send" class="w-4 h-4"></i></button>
+                      <button onclick="stopRecording(true, true)" class="p-1.5 text-slate-400 hover:text-red-400 rounded-full transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                      <button onclick="stopRecording(false, true)" class="p-1.5 text-white btn-primary rounded-full ml-1"><i data-lucide="send" class="w-4 h-4"></i></button>
                     </div>
                   </div>
                 </div>
@@ -298,148 +473,151 @@
           </div>
         </div>
 
-        <!-- MOBILE BOTTOM NAV -->
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 z-50 grid grid-cols-5">
-          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-slate-500" data-filter="all" onclick="setFilter('all')">
-            <i data-lucide="home" class="w-5 h-5"></i><span class="text-[10px] font-semibold">Home</span>
+        <!-- ═══ MOBILE BOTTOM NAV ═══ -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bottom-nav z-50 grid grid-cols-5">
+          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="all" onclick="setFilter('all')">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Products</span>
           </button>
-          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-slate-500" data-filter="media" onclick="setFilter('media')">
-            <i data-lucide="image" class="w-5 h-5"></i><span class="text-[10px] font-semibold">Media</span>
+          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="media" onclick="setFilter('media')">
+            <i data-lucide="monitor" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Previews</span>
           </button>
           <button id="fab" onclick="openUpload()" class="flex flex-col items-center justify-center">
-            <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center -mt-5 shadow-lg border-4 border-white dark:border-slate-800">
+            <div class="w-12 h-12 btn-primary rounded-full flex items-center justify-center -mt-5 border-4 xcluice-glow" style="border-color:rgba(4,2,12,0.9)">
               <i data-lucide="plus" class="w-5 h-5 text-white"></i>
             </div>
           </button>
-          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-slate-500" data-filter="docs" onclick="setFilter('docs')">
-            <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-[10px] font-semibold">Docs</span>
+          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="docs" onclick="setFilter('docs')">
+            <i data-lucide="folder-open" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Assets</span>
           </button>
-          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-slate-500" data-filter="people" onclick="setFilter('people')">
-            <i data-lucide="message-square" class="w-5 h-5"></i><span class="text-[10px] font-semibold">Chat</span>
+          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="people" onclick="setFilter('people')">
+            <i data-lucide="messages-square" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Discuss</span>
           </button>
         </nav>
       </main>
     </div>
 
-    <!-- LAYER OVERLAYS & AVATAR UPLOAD -->
+    <!-- ═══ OVERLAYS ═══ -->
     <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)" />
-    <div id="postMenu" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden"></div>
+
+    <!-- Post Context Menu -->
+    <div id="postMenu" class="x-dropdown rounded-xl overflow-hidden"></div>
     <div id="toastWrap"></div>
 
-    <!-- VIEWER MODAL -->
-    <div id="viewerOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-0 md:p-3 modal-bg" onclick="overlayClickClose(event,'viewerOverlay')">
-      <div class="relative bg-white dark:bg-slate-800 md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[90vh] flex flex-col overflow-hidden anim-modal">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
-          <h3 class="font-semibold text-base truncate flex-1 mr-3" id="viewerTitle">–</h3>
-          <button onclick="closeViewer()" class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+    <!-- ═══ VIEWER MODAL ═══ -->
+    <div id="viewerOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-0 md:p-4 modal-bg" onclick="overlayClickClose(event,'viewerOverlay')">
+      <div class="relative md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[90vh] flex flex-col overflow-hidden anim-modal glass-panel">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-violet-800/30 shrink-0">
+          <h3 class="font-bold text-base truncate flex-1 mr-3 brand-text" id="viewerTitle">–</h3>
+          <button onclick="closeViewer()" class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-300 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
-        <div id="viewerContent" class="flex-1 overflow-auto min-h-0 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center selectable-text"></div>
-        <div class="flex items-center gap-3 px-4 py-4 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800">
-          <div id="viewerAvatar" class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden shadow-sm"></div>
+        <div id="viewerContent" class="flex-1 overflow-auto min-h-0 flex items-center justify-center selectable-text" style="background:rgba(4,2,12,0.5)"></div>
+        <div class="flex items-center gap-3 px-4 py-4 border-t border-violet-800/30 shrink-0 header-bg">
+          <div id="viewerAvatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden xcluice-glow-sm"></div>
           <div class="min-w-0 flex-1">
-            <p class="font-semibold text-sm truncate text-slate-900 dark:text-slate-100" id="viewerAuthor">–</p>
-            <p class="text-xs text-slate-500" id="viewerDate">–</p>
+            <p class="font-semibold text-sm truncate" id="viewerAuthor">–</p>
+            <p class="text-xs text-violet-400/50" id="viewerDate">–</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- UPLOAD MODAL -->
+    <!-- ═══ UPLOAD MODAL ═══ -->
     <div id="uploadOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-bg" onclick="overlayClickClose(event,'uploadOverlay')">
-      <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden anim-modal">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h2 class="text-lg font-bold">Create Post</h2>
-          <button onclick="closeUpload()" class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <div class="relative glass-panel rounded-2xl w-full max-w-md overflow-hidden anim-modal">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-violet-800/30">
+          <div>
+            <h2 class="text-base font-bold brand-text">New Post</h2>
+            <p class="text-[10px] text-violet-400/50 mt-0.5">Share to the Xcluice workspace</p>
+          </div>
+          <button onclick="closeUpload()" class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-300 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
         <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Post Title</label>
-            <input id="inputTitle" type="text" placeholder="Give your post a title…" maxlength="80" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm" />
+            <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Title</label>
+            <input id="inputTitle" type="text" placeholder="Give your post a title…" maxlength="80" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input" />
           </div>
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Description / Text Post</label>
-            <textarea id="inputDesc" rows="3" placeholder="What's this about? Write your post here..." maxlength="1000" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm resize-none"></textarea>
+            <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Description</label>
+            <textarea id="inputDesc" rows="3" placeholder="What's this about?" maxlength="1000" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input resize-none"></textarea>
           </div>
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Attach File <span class="normal-case font-normal text-slate-400">(optional)</span></label>
-            <div id="dropzone" class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()" ondragover="dzDragOver(event)" ondragleave="dzDragLeave()" ondrop="dzDrop(event)">
-              <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto mb-2 text-slate-400 dz-icon"></i>
-              <p class="text-sm font-medium text-slate-600 dark:text-slate-300 dz-label">Drop file or click to browse</p>
-              <p class="text-xs text-slate-400 mt-1 dz-sub">Images, HTML, Docs, APK, ZIP, MP4, MP3 (max 50 MB)</p>
-              <div id="dzProgress" class="hidden mt-3 h-1 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-                <div id="dzFill" class="h-full bg-indigo-500 transition-all duration-300" style="width:0%"></div>
+            <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Attach File <span class="normal-case font-normal text-violet-400/30">(optional)</span></label>
+            <div id="dropzone" class="rounded-xl p-6 text-center cursor-pointer transition-all" style="border:2px dashed rgba(139,92,246,0.25);background:rgba(139,92,246,0.04);" onclick="document.getElementById('fileInput').click()" ondragover="dzDragOver(event)" ondragleave="dzDragLeave()" ondrop="dzDrop(event)">
+              <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto mb-2 text-violet-400/50 dz-icon"></i>
+              <p class="text-sm font-medium text-violet-300/70 dz-label">Drop file or click to browse</p>
+              <p class="text-xs text-violet-400/40 mt-1 dz-sub">Images, HTML, Docs, APK, ZIP, MP4, MP3 (max 50 MB)</p>
+              <div id="dzProgress" class="hidden mt-3 h-1 rounded-full overflow-hidden" style="background:rgba(139,92,246,0.15)">
+                <div id="dzFill" class="h-full transition-all duration-300" style="width:0%;background:linear-gradient(90deg,#7c3aed,#22d3ee)"></div>
               </div>
             </div>
             <input type="file" id="fileInput" class="hidden" onchange="fileChosen(event)" />
           </div>
         </div>
-        <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
-          <button onclick="closeUpload()" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Cancel</button>
-          <button id="publishBtn" onclick="publishPost()" class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">Publish</button>
+        <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-violet-800/30">
+          <button onclick="closeUpload()" class="px-4 py-2 text-sm font-medium text-violet-300/60 hover:text-violet-200 hover:bg-violet-900/20 rounded-xl transition-colors">Cancel</button>
+          <button id="publishBtn" onclick="publishPost()" class="px-5 py-2 text-sm font-semibold btn-primary text-white rounded-xl">Publish</button>
         </div>
       </div>
     </div>
 
-    <!-- FOSTHUB AUTH MODAL -->
+    <!-- ═══ AUTH MODAL ═══ -->
     <div id="fosthubAuthOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-bg" onclick="overlayClickClose(event,'fosthubAuthOverlay')">
-      <div class="relative glass-panel rounded-2xl w-full max-w-sm overflow-hidden anim-modal border-t border-indigo-500/30">
-        <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-600 rounded-full mix-blend-screen filter blur-[70px] opacity-40 pointer-events-none"></div>
-        <div class="p-8 relative z-10 text-slate-100">
+      <div class="relative glass-panel rounded-2xl w-full max-w-sm overflow-hidden anim-modal">
+        <!-- Top gradient blob -->
+        <div class="absolute -top-20 -right-20 w-44 h-44 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(124,58,237,0.4),transparent 70%);filter:blur(30px);"></div>
+        <div class="absolute -bottom-10 -left-10 w-36 h-36 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.2),transparent 70%);filter:blur(24px);"></div>
+
+        <div class="p-7 relative z-10">
           <div class="flex justify-center mb-6">
-            <div class="p-3 bg-indigo-600/20 rounded-xl border border-indigo-500/30 shadow-[0_0_20px_rgba(79,70,229,0.4)]">
-              <i data-lucide="cloud" class="w-8 h-8 text-indigo-400"></i>
+            <div class="x-logo p-3.5 xcluice-glow">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/>
+              </svg>
             </div>
           </div>
-          
-          <h3 class="text-2xl font-bold text-center mb-2 tracking-tight" id="authTitle">Sign In to FostHub</h3>
-          <p class="text-sm text-slate-400 text-center mb-8" id="authSubtitle">Enter your internal network credentials.</p>
-          
+
+          <h3 class="text-2xl font-bold text-center mb-1 brand-text" id="authTitle">Sign in to Xcluice</h3>
+          <p class="text-xs text-violet-400/50 text-center mb-7 font-medium" id="authSubtitle">Enter your workspace credentials</p>
+
           <div class="space-y-4">
             <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Username</label>
-              <div class="domain-suffix-group flex items-center bg-slate-800/60 border border-slate-600 rounded-lg overflow-hidden transition-all">
-                <input id="authUsername" type="text" placeholder="momin" autocomplete="off" class="flex-1 px-3.5 py-2.5 bg-transparent text-sm text-white placeholder-slate-500 outline-none" />
-                <span class="px-3 text-sm text-slate-500 font-medium select-none bg-slate-800/80 h-full py-2.5 border-l border-slate-700">@fosthub.com</span>
+              <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Username</label>
+              <div class="flex items-center rounded-xl overflow-hidden" style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);">
+                <input id="authUsername" type="text" placeholder="your name" autocomplete="off" class="flex-1 px-3.5 py-2.5 bg-transparent text-sm text-white placeholder-violet-400/30 outline-none" />
+                <span class="px-3 text-xs text-violet-400/40 font-medium bg-violet-950/40 h-full py-2.5 border-l border-violet-800/30">@xcluice.io</span>
               </div>
             </div>
-            
             <div>
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Password</label>
-              <input id="authPassword" type="password" placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-800/60 border border-slate-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-slate-500" />
+              <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Password</label>
+              <input id="authPassword" type="password" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl text-sm text-white x-input placeholder-violet-400/30" />
             </div>
-
             <div id="confirmPassDiv" class="hidden">
-              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Confirm Password</label>
-              <input id="authConfirmPass" type="password" placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-800/60 border border-slate-600 rounded-lg text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-slate-500" />
+              <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Confirm Password</label>
+              <input id="authConfirmPass" type="password" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl text-sm text-white x-input placeholder-violet-400/30" />
             </div>
-
-            <button id="authSubmitBtn" onclick="submitAuth()" class="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-lg text-sm font-semibold transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)]">
+            <button id="authSubmitBtn" onclick="submitAuth()" class="w-full mt-1 py-3 btn-primary text-white rounded-xl text-sm font-bold tracking-wide transition-all">
               Sign In
             </button>
           </div>
 
-          <p class="text-center text-xs text-slate-400 mt-6" id="authToggleText">
-            New here? <span class="text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer font-medium" onclick="toggleAuthMode()">Create account</span>
+          <p class="text-center text-xs text-violet-400/40 mt-6" id="authToggleText">
+            New here? <span class="text-violet-400 hover:text-violet-200 cursor-pointer font-semibold" onclick="toggleAuthMode()">Create account</span>
           </p>
         </div>
       </div>
     </div>
 
-    <!-- CORE SCRIPTS -->
+    <!-- ═══ CORE SCRIPTS ═══ -->
     <script>
-      function refreshIcons() {
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
-      }
+      function refreshIcons() { if (typeof lucide !== 'undefined') lucide.createIcons(); }
       refreshIcons();
 
       const SB_URL = 'https://nzolsmouyulzqeaocejm.supabase.co';
       const SB_KEY = 'sb_publishable_EGX3jDjRh5LiXjdTw2AXxA_e1YIaP4Q';
       const BUCKET = 'homework-files';
       const TABLE  = 'homework';
-      const THEME_KEY   = 'fosthub_theme';
-      const SESSION_KEY = 'posthub_session';
+      const THEME_KEY   = 'xcluice_theme';
+      const SESSION_KEY = 'xcluice_session';
       const ADMIN_EMAIL = 'momin@fosthub.com';
 
       let allPosts = [], activeFilter = 'all', searchQuery = '', selectedFile = null;
@@ -447,13 +625,11 @@
       let chatUserId = null, chatUserName = null, chatUserEmail = null, chatUserPhoto = null;
       let chatInitialized = false, chatMessages = [], chatUsers = [];
       let presenceHeartbeat = null, usersChannelSubscribed = false;
-      let currentThread = null, dmSupported = true, dmWarned = false;
-      let currentUser = null, chatPollInterval = null, lastMessageId = null;
+      let currentThread = null, currentUser = null, chatPollInterval = null, lastMessageId = null;
       let authMode = 'login';
-      const readThreads = new Set();
 
-      function saveSession(u)  { try { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); } catch(e){} }
-      function clearSession()  { try { localStorage.removeItem(SESSION_KEY); } catch(e){} }
+      function saveSession(u)   { try { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); } catch(e){} }
+      function clearSession()   { try { localStorage.removeItem(SESSION_KEY); } catch(e){} }
       function restoreSession() {
         try {
           const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
@@ -465,11 +641,11 @@
         applyStoredTheme();
         restoreSession();
         loadPosts();
-        setInterval(loadPosts, 20000); 
+        setInterval(loadPosts, 20000);
         fetchActiveUsers();
         setInterval(fetchActiveUsers, 30000);
         loadSupabaseSdk().then(() => subscribeToActiveUsers());
-        
+
         document.addEventListener('click', e => {
           ['userMenu','userMenuMobile','postMenu'].forEach(id => {
             const el = document.getElementById(id);
@@ -480,17 +656,14 @@
             }
           });
         });
-        
-        setTimeout(() => updateNavActive(activeFilter), 50); 
+
+        setTimeout(() => updateNavActive(activeFilter), 50);
       });
 
       function loadSupabaseSdk() {
         if (supabaseReadyPromise) return supabaseReadyPromise;
         supabaseReadyPromise = new Promise((res, rej) => {
-          if (window.supabase) {
-            supabase = window.supabase.createClient(SB_URL, SB_KEY);
-            return res(supabase);
-          }
+          if (window.supabase) { supabase = window.supabase.createClient(SB_URL, SB_KEY); return res(supabase); }
           const s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
           s.onload = () => { supabase = window.supabase.createClient(SB_URL, SB_KEY); res(supabase); };
@@ -509,78 +682,53 @@
         const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', dark);
         document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('theme-active', b.dataset.theme === theme));
-        document.querySelectorAll('.theme-choice').forEach(b => b.classList.toggle('font-semibold', b.dataset.theme === theme));
+        document.querySelectorAll('.theme-choice').forEach(b => b.classList.toggle('font-bold', b.dataset.theme === theme));
         if (persist) try { localStorage.setItem(THEME_KEY, theme); } catch(e){}
       }
       function setThemeFn(e, theme) {
-        e.stopPropagation();
-        applyTheme(theme);
-        toast('Theme updated', 'ok');
-        closeUserDropdown();
-        document.getElementById('userDropdownMobile')?.classList.add('hidden');
+        e.stopPropagation(); applyTheme(theme); toast('Theme updated', 'ok');
+        closeUserDropdown(); document.getElementById('userDropdownMobile')?.classList.add('hidden');
       }
 
-      function toggleUserMenu(e) {
-        e.stopPropagation();
-        if (!currentUser) { openFostHubAuth(); return; }
-        document.getElementById('userDropdown').classList.toggle('hidden');
-      }
-      function toggleUserMenuMobile(e) {
-        e.stopPropagation();
-        if (!currentUser) { openFostHubAuth(); return; }
-        document.getElementById('userDropdownMobile').classList.toggle('hidden');
-      }
-      function closeUserDropdown() {
-        document.getElementById('userDropdown')?.classList.add('hidden');
-        document.getElementById('themeOptions')?.classList.add('hidden');
-      }
-      function toggleThemeOptions(e) {
-        e.stopPropagation();
-        document.getElementById('themeOptions').classList.toggle('hidden');
-      }
+      function toggleUserMenu(e) { e.stopPropagation(); if (!currentUser) { openFostHubAuth(); return; } document.getElementById('userDropdown').classList.toggle('hidden'); }
+      function toggleUserMenuMobile(e) { e.stopPropagation(); if (!currentUser) { openFostHubAuth(); return; } document.getElementById('userDropdownMobile').classList.toggle('hidden'); }
+      function closeUserDropdown() { document.getElementById('userDropdown')?.classList.add('hidden'); document.getElementById('themeOptions')?.classList.add('hidden'); }
+      function toggleThemeOptions(e) { e.stopPropagation(); document.getElementById('themeOptions').classList.toggle('hidden'); }
 
       function logOut(e) {
         e.stopPropagation();
         if (presenceHeartbeat) clearInterval(presenceHeartbeat);
         if (chatPollInterval)  clearInterval(chatPollInterval);
-        
         clearSession();
         currentUser = chatUserId = chatUserName = chatUserEmail = chatUserPhoto = null;
         chatInitialized = false; chatMessages = []; currentThread = null; lastMessageId = null;
-        
         document.getElementById('userAvatarTop').innerHTML = '<span id="userInitial">?</span>';
         document.getElementById('userAvatarMobile').innerHTML = '<span id="userInitialMobile">?</span>';
-        el('userNameTop').textContent = 'Sign in';
-        el('userRoleLabel').textContent = 'Guest';
-        el('mobileUserName').textContent = 'Guest';
-        el('mobileUserEmail').textContent = '';
-        closeUserDropdown();
-        document.getElementById('userDropdownMobile')?.classList.add('hidden');
+        el('userNameTop').textContent = 'Sign in'; el('userRoleLabel').textContent = 'Guest';
+        el('mobileUserName').textContent = 'Guest'; el('mobileUserEmail').textContent = '';
+        closeUserDropdown(); document.getElementById('userDropdownMobile')?.classList.add('hidden');
         if (activeFilter === 'people') setFilter('all');
-        toast('Terminal disconnected', 'ok');
+        toast('Signed out of Xcluice', 'ok');
       }
 
-      /* ========================================================
-         FOSTHUB CUSTOM AUTHENTICATION SYSTEM 
-      ======================================================== */
-      
+      /* ═══ AUTH ═══ */
       function openFostHubAuth() { showOverlay('fosthubAuthOverlay'); }
       function closeFostHubAuth() { hideOverlay('fosthubAuthOverlay'); }
 
       function toggleAuthMode() {
         authMode = authMode === 'login' ? 'register' : 'login';
-        el('authTitle').textContent = authMode === 'login' ? 'Sign In to FostHub' : 'Create FostHub Account';
-        el('authSubtitle').textContent = authMode === 'login' ? 'Enter your internal network credentials.' : 'Establish your permanent domain identity.';
+        el('authTitle').textContent = authMode === 'login' ? 'Sign in to Xcluice' : 'Join Xcluice';
+        el('authSubtitle').textContent = authMode === 'login' ? 'Enter your workspace credentials' : 'Create your permanent identity';
         el('confirmPassDiv').classList.toggle('hidden', authMode === 'login');
         el('authSubmitBtn').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
-        el('authToggleText').innerHTML = authMode === 'login' 
-          ? 'New here? <span class="text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer font-medium" onclick="toggleAuthMode()">Create account</span>' 
-          : 'Already have an account? <span class="text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer font-medium" onclick="toggleAuthMode()">Sign in</span>';
+        el('authToggleText').innerHTML = authMode === 'login'
+          ? 'New here? <span class="text-violet-400 hover:text-violet-200 cursor-pointer font-semibold" onclick="toggleAuthMode()">Create account</span>'
+          : 'Already have an account? <span class="text-violet-400 hover:text-violet-200 cursor-pointer font-semibold" onclick="toggleAuthMode()">Sign in</span>';
       }
 
       function generateHash(str) {
         let hash = 5381;
-        for (let i = 0; i < str.length; i++) { hash = ((hash << 5) + hash) + str.charCodeAt(i); }
+        for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash) + str.charCodeAt(i);
         return "fHx_" + Math.abs(hash).toString(16) + btoa(str).slice(0, 12);
       }
 
@@ -588,68 +736,46 @@
         const rawUser = el('authUsername').value.trim().toLowerCase();
         const pass = el('authPassword').value;
         if (!rawUser || !pass) { toast('Fields cannot be empty', 'err'); return; }
-        
-        const cleanUser = rawUser.replace(/@fosthub\.com$/, '').replace(/[^a-z0-9_.]/g, '');
-        if (cleanUser.length < 3) { toast('Username minimum 3 characters', 'err'); return; }
-        
+        const cleanUser = rawUser.replace(/@xcluice\.io$/, '').replace(/@fosthub\.com$/, '').replace(/[^a-z0-9_.]/g, '');
+        if (cleanUser.length < 3) { toast('Username min 3 characters', 'err'); return; }
         const emailStr = `${cleanUser}@fosthub.com`;
         const passHash = generateHash(pass);
         const btn = el('authSubmitBtn');
-        
-        btn.disabled = true; btn.textContent = 'Processing...';
-
+        btn.disabled = true; btn.textContent = 'Processing…';
         try {
           if (authMode === 'register') {
             const pass2 = el('authConfirmPass').value;
-            if (pass !== pass2) { toast('Passwords mismatch', 'err'); throw new Error('mismatch'); }
-            
-            const check = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}`, { headers: { apikey: SB_KEY } });
+            if (pass !== pass2) { toast('Passwords do not match', 'err'); throw new Error('mismatch'); }
+            const check = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}`, { headers:{ apikey:SB_KEY } });
             const existing = await check.json();
             if (existing.length > 0) { toast('Username already taken', 'err'); throw new Error('exists'); }
-
             const ins = await fetch(`${SB_URL}/rest/v1/fosthub_users`, {
-              method: 'POST',
-              headers: { apikey: SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-              body: JSON.stringify({ 
-                username: cleanUser, email: emailStr, password_hash: passHash, 
-                display_name: cleanUser.charAt(0).toUpperCase() + cleanUser.slice(1), 
-                role: 'Member' 
-              })
+              method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json', Prefer:'return=representation' },
+              body: JSON.stringify({ username:cleanUser, email:emailStr, password_hash:passHash, display_name:cleanUser.charAt(0).toUpperCase()+cleanUser.slice(1), role:'Member' })
             });
             if (!ins.ok) throw new Error('Server reject');
             const newUser = (await ins.json())[0];
-            setSignedInUser(newUser);
-            toast('Account created successfully', 'ok');
-
+            setSignedInUser(newUser); toast('Account created!', 'ok');
           } else {
-            const sel = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}&password_hash=eq.${passHash}`, { headers: { apikey: SB_KEY } });
+            const sel = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}&password_hash=eq.${passHash}`, { headers:{ apikey:SB_KEY } });
             const users = await sel.json();
             if (!users || users.length === 0) { toast('Invalid credentials', 'err'); throw new Error('invalid'); }
-            setSignedInUser(users[0]);
-            toast(`Welcome back, ${users[0].display_name}`, 'ok');
+            setSignedInUser(users[0]); toast(`Welcome back, ${users[0].display_name}`, 'ok');
           }
-        } catch (e) {
-          console.log(e);
-        } finally {
-          btn.disabled = false; btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
-        }
+        } catch(e) { console.log(e); }
+        finally { btn.disabled = false; btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account'; }
       }
 
       function setSignedInUser(profile, isRestore = false) {
         currentUser = profile;
         chatUserId = profile.id || ('usr_' + profile.username);
-        chatUserName = profile.display_name; 
-        chatUserEmail = profile.email; 
-        chatUserPhoto = profile.avatar_url;
-        
+        chatUserName = profile.display_name; chatUserEmail = profile.email; chatUserPhoto = profile.avatar_url;
         if (!isRestore) saveSession(currentUser);
-        updateUserUI();
-        closeFostHubAuth();
+        updateUserUI(); closeFostHubAuth();
         if (activeFilter === 'people') initChat();
-        
         fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${profile.id}`, {
-            method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'},
-            body: JSON.stringify({last_active:new Date().toISOString()})
+          method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'},
+          body: JSON.stringify({last_active:new Date().toISOString()})
         }).catch(()=>{});
       }
 
@@ -657,83 +783,49 @@
         if (!currentUser) return;
         const initial = currentUser.display_name.charAt(0).toUpperCase();
         const isAdmin = currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin';
-        
         el('userNameTop').textContent = currentUser.display_name;
         el('userRoleLabel').textContent = isAdmin ? '⚡ Admin' : currentUser.role;
         el('mobileUserName').textContent = currentUser.display_name;
         el('mobileUserEmail').textContent = currentUser.email;
-        
         const imgHtml = currentUser.avatar_url ? `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover">` : `<span>${initial}</span>`;
         document.getElementById('userAvatarTop').innerHTML = imgHtml;
         document.getElementById('userAvatarMobile').innerHTML = imgHtml;
       }
 
-      /* ========================================================
-         PROFILE PICTURE UPLOADER 
-      ======================================================== */
+      /* ═══ AVATAR ═══ */
       function triggerAvatarUpload() { el('avatarInput').click(); }
       async function handleAvatarUpload(e) {
         const file = e.target.files[0];
         if (!file || !currentUser) return;
-        if (file.size > 2*1024*1024) { toast('Avatar limit is 2MB max', 'err'); return; }
-        
-        toast('Saving Profile Picture...', 'ok');
-        closeUserDropdown();
-        document.getElementById('userDropdownMobile')?.classList.add('hidden');
-        
+        if (file.size > 2*1024*1024) { toast('Avatar max 2MB', 'err'); return; }
+        toast('Uploading avatar…', 'ok');
+        closeUserDropdown(); document.getElementById('userDropdownMobile')?.classList.add('hidden');
         try {
           const safeName = `avatar_${currentUser.username}_${Date.now()}`;
           const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-            method: 'POST',
-            headers: { apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type': file.type },
-            body: file
+            method:'POST', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':file.type }, body:file
           });
           if (!r.ok) throw new Error();
-          
           const fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
-          
-          await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, {
-            method: 'PATCH',
-            headers: { apikey:SB_KEY, 'Content-Type':'application/json' },
-            body: JSON.stringify({ avatar_url: fileUrl })
-          });
-
-          await fetch(`${SB_URL}/rest/v1/${TABLE}?author_email=eq.${currentUser.email}`, {
-            method: 'PATCH',
-            headers: { apikey:SB_KEY, 'Content-Type':'application/json' },
-            body: JSON.stringify({ author_photo: fileUrl })
-          });
-
-          await fetch(`${SB_URL}/rest/v1/chat_users?uid=eq.${chatUserId}`, {
-            method: 'PATCH',
-            headers: { apikey:SB_KEY, 'Content-Type':'application/json' },
-            body: JSON.stringify({ photo: fileUrl })
-          });
-          
-          currentUser.avatar_url = fileUrl;
-          setSignedInUser(currentUser); 
-          loadPosts(false);
-          fetchActiveUsers();
-          toast('Avatar updated everywhere!', 'ok');
-        } catch (err) {
-          toast('Failed to upload image', 'err');
-        }
+          await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({avatar_url:fileUrl}) });
+          await fetch(`${SB_URL}/rest/v1/${TABLE}?author_email=eq.${currentUser.email}`, { method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({author_photo:fileUrl}) });
+          await fetch(`${SB_URL}/rest/v1/chat_users?uid=eq.${chatUserId}`, { method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({photo:fileUrl}) });
+          currentUser.avatar_url = fileUrl; setSignedInUser(currentUser);
+          loadPosts(false); fetchActiveUsers(); toast('Avatar updated!', 'ok');
+        } catch { toast('Upload failed', 'err'); }
       }
 
-      /* ========================================================
-         POSTS & FEED (EXTENDED FILE HANDLING & TEXT POSTS)
-      ======================================================== */
-
+      /* ═══ POSTS & FEED ═══ */
       async function loadPosts(showSpinner=false) {
-        if (showSpinner) el('grid').innerHTML = '<div class="flex justify-center py-16"><div class="spinner"></div></div>';
+        if (showSpinner) el('grid').innerHTML = '<div class="flex justify-center py-20"><div class="spinner" style="width:36px;height:36px;border-width:3px;"></div></div>';
         try {
-          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?order=created_at.desc`, { headers: { apikey: SB_KEY } });
+          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?order=created_at.desc`, { headers:{ apikey:SB_KEY } });
           if (!r.ok) throw new Error();
           allPosts = await r.json();
           if (activeFilter !== 'people') renderGrid();
         } catch {
           if (allPosts.length === 0 && activeFilter !== 'people')
-            el('grid').innerHTML = emptyState('📭', 'Failed to trace platform index.');
+            el('grid').innerHTML = emptyState('Unable to load posts. Check your connection.');
         }
       }
 
@@ -745,9 +837,17 @@
         if (ext === 'html') return 'html';
         if (ext === 'apk') return 'apk';
         if (['zip','rar','7z'].includes(ext)) return 'archive';
-        if (['mp3','wav','ogg','webm','mp4','mkv'].includes(ext)) return 'media'; 
+        if (['mp3','wav','ogg','webm','mp4','mkv'].includes(ext)) return 'media';
         return 'other';
       }
+
+      const feedMeta = {
+        all:    { title:'Products',    subtitle:'Client work & agency builds' },
+        media:  { title:'Previews',    subtitle:'Visual screenshots of delivered work' },
+        docs:   { title:'Assets',      subtitle:'Project files & documents' },
+        html:   { title:'Live Demos',  subtitle:'Interactive web builds' },
+        people: { title:'Discussions', subtitle:'Team conversations' },
+      };
 
       function renderGrid() {
         let posts = allPosts;
@@ -761,53 +861,54 @@
           const q = searchQuery.toLowerCase();
           posts = posts.filter(p => (p.title||'').toLowerCase().includes(q) || (p.subject||'').toLowerCase().includes(q));
         }
-        const titles = { all:'Recent Posts', media:'Media Storage', docs:'Documents Ledger', html:'Web Sandbox Core', people:'Unified Terminal' };
-        el('feedTitle').textContent = titles[activeFilter] || 'Posts';
+        const meta = feedMeta[activeFilter] || feedMeta.all;
+        el('feedTitle').textContent = meta.title;
+        el('feedSubtitle').textContent = meta.subtitle;
         const grid = el('grid');
-        if (!posts.length) { grid.innerHTML = emptyState('🔍', 'Zero matching items.'); return; }
-        
+        if (!posts.length) { grid.innerHTML = emptyState('No posts here yet.'); return; }
         grid.innerHTML = posts.map(p => cardHTML(p)).join('');
         refreshIcons();
         hydrateHtmlThumbs();
       }
 
+      const badgeColors = { media:'from-cyan-600/20 to-cyan-500/10 text-cyan-300 border-cyan-500/25', docs:'from-blue-600/20 to-blue-500/10 text-blue-300 border-blue-500/25', html:'from-violet-600/20 to-violet-500/10 text-violet-300 border-violet-500/25', apk:'from-green-600/20 to-green-500/10 text-green-300 border-green-500/25', text:'from-slate-600/20 to-slate-500/10 text-slate-300 border-slate-500/25', archive:'from-orange-600/20 to-orange-500/10 text-orange-300 border-orange-500/25', other:'from-slate-600/20 to-slate-500/10 text-slate-300 border-slate-500/25' };
+      const badgeLabel = { media:'Preview', docs:'Asset', html:'Demo', apk:'APK', text:'Post', archive:'Archive', other:'File' };
+
       function cardHTML(p) {
         const author = p.author_name || p.title || 'Anonymous';
         const type = getFileType(p.file_url);
-        const timeStr = timeAgo(p.created_at);
         const thumbId = 'thumb_' + (p.id ?? Math.random().toString(36).slice(2));
-        const badgeLabel = { media:'Media', docs:'Doc', html:'App', text:'Text', apk:'APK', archive:'Archive', other:'File' };
+        const t = p.file_url ? type : 'text';
+        const bc = badgeColors[t] || badgeColors.other;
 
         let thumbHtml = '';
         if (p.file_url) {
           if (type === 'media') thumbHtml = `<img src="${p.file_url}" class="w-full h-full object-cover">`;
-          else if (type === 'html') thumbHtml = `<div id="${thumbId}" data-html-url="${esc(p.file_url)}" class="card-thumb-pending w-full h-full flex items-center justify-center"><div class="spinner" style="width:28px;height:28px;border-width:2.5px;"></div></div>`;
-          else if (type === 'docs') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-slate-700 dark:to-slate-600"><i data-lucide="file-text" class="w-12 h-12 text-blue-500"></i></div>`;
-          else if (type === 'apk') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-700 dark:to-slate-600"><i data-lucide="package" class="w-12 h-12 text-green-500"></i></div>`;
-          else thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-700"><i data-lucide="file" class="w-12 h-12 text-slate-400"></i></div>`;
+          else if (type === 'html') thumbHtml = `<div id="${thumbId}" data-html-url="${esc(p.file_url)}" class="card-thumb-pending w-full h-full flex items-center justify-center"><div class="spinner" style="width:28px;height:28px;border-width:2px;"></div></div>`;
+          else if (type === 'docs') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(14,8,28,0.8))"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.7)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>`;
+          else if (type === 'apk') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(14,8,28,0.8))"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>`;
+          else thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:rgba(14,8,28,0.8)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(139,92,246,0.5)" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></div>`;
         } else {
-          thumbHtml = `<div class="w-full h-full p-4 md:p-6 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-center overflow-hidden">
-            <p class="text-sm md:text-base font-medium text-slate-700 dark:text-slate-300 line-clamp-4 leading-relaxed">${esc(p.subject || p.title || '')}</p>
+          thumbHtml = `<div class="w-full h-full p-5 flex items-center justify-center text-center overflow-hidden" style="background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(14,8,28,0.9))">
+            <p class="text-sm font-medium text-violet-200/80 line-clamp-4 leading-relaxed">${esc(p.subject || p.title || '')}</p>
           </div>`;
         }
 
         const avatarHtml = p.author_photo ? `<img src="${esc(p.author_photo)}" class="w-full h-full object-cover">` : `<span class="text-sm font-bold text-white">${author[0].toUpperCase()}</span>`;
-        const t = p.file_url ? type : 'text';
-        const menuPayload = JSON.stringify({ id: p.id, author_email: p.author_email, file_url: p.file_url || null });
 
         return `
-          <div class="card-item bg-white dark:bg-slate-800 md:rounded-2xl shadow-sm border-y md:border border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer mb-4 md:mb-0" onclick="openViewer('${p.id}')">
-            <div class="w-full aspect-video overflow-hidden bg-slate-100 dark:bg-slate-700 relative">
+          <div class="card-item x-card md:rounded-2xl overflow-hidden cursor-pointer mb-4 md:mb-0" onclick="openViewer('${p.id}')">
+            <div class="w-full aspect-video overflow-hidden relative" style="background:rgba(8,5,20,0.9)">
               ${thumbHtml}
-              <span class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[10px] font-bold uppercase rounded bg-black/75 text-white backdrop-blur-sm shadow-sm">${badgeLabel[t]||'File'}</span>
+              <span class="absolute bottom-2 right-2 text-[9px] font-bold tracking-wider rounded-full px-2 py-0.5 bg-gradient-to-r ${bc} border" style="backdrop-filter:blur(8px)">${badgeLabel[t]||'File'}</span>
             </div>
             <div class="p-3 md:p-4 flex items-start gap-3">
-              <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shrink-0 overflow-hidden mt-0.5 shadow-sm">${avatarHtml}</div>
+              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 overflow-hidden mt-0.5 xcluice-glow-sm">${avatarHtml}</div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-semibold text-base leading-snug line-clamp-2 text-slate-900 dark:text-slate-100">${esc(p.subject||p.title||'Untitled')}</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">${esc(author)} • ${timeStr}</p>
+                <h3 class="font-semibold text-sm leading-snug line-clamp-2 text-slate-100">${esc(p.subject||p.title||'Untitled')}</h3>
+                <p class="text-[11px] text-violet-400/50 mt-1 truncate font-medium">${esc(author)} · ${timeAgo(p.created_at)}</p>
               </div>
-              <button class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 shrink-0 -mr-1" onclick="event.stopPropagation(); openPostMenu(event, '${p.id}')">
+              <button class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-400/40 hover:text-violet-300 shrink-0 -mr-1 transition-colors" onclick="event.stopPropagation(); openPostMenu(event, '${p.id}')">
                 <i data-lucide="more-vertical" class="w-4 h-4"></i>
               </button>
             </div>
@@ -817,89 +918,64 @@
       const htmlSrcCache = new Map();
       async function hydrateHtmlThumbs() {
         const nodes = document.querySelectorAll('.card-thumb-pending');
-        for (const el of nodes) {
-          const url = el.dataset.htmlUrl;
+        for (const node of nodes) {
+          const url = node.dataset.htmlUrl;
           try {
             let html = htmlSrcCache.get(url);
-            if (!html) {
-              const r = await fetch(url);
-              html = await r.text();
-              htmlSrcCache.set(url, html);
-            }
+            if (!html) { const r = await fetch(url); html = await r.text(); htmlSrcCache.set(url, html); }
             const iframe = document.createElement('iframe');
             iframe.className = 'thumb-iframe';
             iframe.setAttribute('sandbox', 'allow-scripts');
             iframe.srcdoc = html;
-            el.replaceWith(iframe);
+            node.replaceWith(iframe);
           } catch {
-            el.innerHTML = '<i data-lucide="globe" class="w-8 h-8 text-slate-400"></i>';
-            refreshIcons();
+            node.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(139,92,246,0.4)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
           }
         }
       }
 
       function openPostMenu(e, id) {
         const post = allPosts.find(x => String(x.id) === String(id));
-        if(!post) return;
-        
+        if (!post) return;
         const menu = el('postMenu');
         const showDel = currentUser && (currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin' || (post.author_email && currentUser.email === post.author_email));
-        
-        let menuHtml = '';
-
-        if (post.file_url) {
-          menuHtml += `<a href="${esc(post.file_url)}" target="_blank" download class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><i data-lucide="download" class="w-4 h-4"></i> Download</a>`;
-        }
-        
-        if (showDel) {
-          menuHtml += `<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-slate-700 transition-colors" onclick="deletePost('${post.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>`;
-        }
-        
-        menuHtml += `<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="closePostMenu();toast('Report compiled','ok')"><i data-lucide="flag" class="w-4 h-4"></i> Report</button>`;
-        
-        menu.innerHTML = menuHtml;
-
+        let html = '';
+        if (post.file_url) html += `<a href="${esc(post.file_url)}" target="_blank" download class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors"><i data-lucide="download" class="w-4 h-4"></i> Download</a>`;
+        if (showDel) html += `<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors" onclick="deletePost('${post.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>`;
+        html += `<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300/60 hover:bg-violet-900/20 transition-colors" onclick="closePostMenu();toast('Reported','ok')"><i data-lucide="flag" class="w-4 h-4"></i> Report</button>`;
+        menu.innerHTML = html;
         const rect = e.currentTarget.getBoundingClientRect();
         menu.style.cssText = `left:${Math.min(rect.right - 180, window.innerWidth - 190)}px; top:${rect.bottom + window.scrollY}px;`;
         menu.classList.add('open');
         refreshIcons();
       }
-      
       function closePostMenu() { el('postMenu').classList.remove('open'); }
 
       async function deletePost(id) {
         closePostMenu();
         try {
-          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
-            method: 'DELETE',
-            headers: { apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}` }
-          });
+          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, { method:'DELETE', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}` } });
           if (!r.ok) throw new Error();
-          toast('Post purge complete', 'ok');
-          loadPosts();
-        } catch {
-          toast('Purge access denied', 'err');
-        }
+          toast('Post deleted', 'ok'); loadPosts();
+        } catch { toast('Delete failed', 'err'); }
       }
 
       function openViewer(id) {
         const p = allPosts.find(x => String(x.id) === String(id));
-        if(!p) return;
-        
+        if (!p) return;
         const author = p.author_name || p.title || 'Anonymous';
         el('viewerTitle').textContent  = p.subject || p.title || 'Post';
         el('viewerAuthor').textContent = author;
         el('viewerDate').textContent   = new Date(p.created_at).toLocaleString();
-        el('viewerAvatar').innerHTML = p.author_photo ? `<img src="${esc(p.author_photo)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
-        
+        el('viewerAvatar').innerHTML   = p.author_photo ? `<img src="${esc(p.author_photo)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
         const content = el('viewerContent');
         if (p.file_url) {
           const type = getFileType(p.file_url);
           if (type === 'media') {
-            content.innerHTML = `<img src="${p.file_url}" class="w-full h-auto max-h-screen object-contain bg-black">`;
+            content.innerHTML = `<img src="${p.file_url}" class="w-full h-auto max-h-screen object-contain" style="background:rgba(4,2,12,0.8)">`;
           } else if (type === 'html') {
             content.innerHTML = `<div id="vfw" class="w-full flex items-center justify-center h-[75vh]"><div class="spinner"></div></div>`;
-            fetch(p.file_url).then(r => r.text()).then(html => {
+            fetch(p.file_url).then(r=>r.text()).then(html=>{
               const iframe = document.createElement('iframe');
               iframe.className = 'viewer-iframe bg-white';
               iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups');
@@ -907,11 +983,10 @@
               el('vfw').replaceWith(iframe);
             });
           } else {
-            content.innerHTML = `<div class="p-12 text-center"><i data-lucide="file" class="w-12 h-12 mx-auto text-slate-400 mb-3"></i><a href="${p.file_url}" target="_blank" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Download File</a></div>`;
-            refreshIcons();
+            content.innerHTML = `<div class="p-12 text-center"><a href="${p.file_url}" target="_blank" class="px-5 py-2.5 btn-primary text-white rounded-xl text-sm font-semibold inline-block">Download File</a></div>`;
           }
         } else {
-          content.innerHTML = `<div class="p-6 md:p-12 text-base md:text-lg whitespace-pre-wrap leading-relaxed text-slate-900 dark:text-slate-100 flex items-center justify-center h-full">${esc(p.subject||'')}</div>`;
+          content.innerHTML = `<div class="p-6 md:p-12 text-base whitespace-pre-wrap leading-relaxed text-slate-200 flex items-center justify-center h-full selectable-text">${esc(p.subject||'')}</div>`;
         }
         showOverlay('viewerOverlay');
       }
@@ -921,27 +996,24 @@
       function closeUpload() { hideOverlay('uploadOverlay'); resetUploadForm(); }
       function resetUploadForm() {
         el('inputTitle').value = ''; el('inputDesc').value = ''; el('fileInput').value = ''; selectedFile = null;
-        const dz = el('dropzone');
-        dz.querySelector('.dz-label').textContent = 'Drop file or click to browse';
-        dz.querySelector('.dz-sub').textContent = 'Images, HTML, Docs, APK, ZIP, MP4, MP3 (max 50 MB)';
+        el('dropzone').querySelector('.dz-label').textContent = 'Drop file or click to browse';
+        el('dropzone').querySelector('.dz-sub').textContent = 'Images, HTML, Docs, APK, ZIP, MP4, MP3 (max 50 MB)';
         el('dzProgress').classList.add('hidden');
       }
 
       function fileChosen(e) { handleFile(e.target.files[0]); }
-      function dzDragOver(e) { e.preventDefault(); el('dropzone').classList.add('bg-indigo-50/50'); }
-      function dzDragLeave()  { el('dropzone').classList.remove('bg-indigo-50/50'); }
-      function dzDrop(e) { e.preventDefault(); el('dropzone').classList.remove('bg-indigo-50/50'); handleFile(e.dataTransfer.files[0]); }
-      
+      function dzDragOver(e) { e.preventDefault(); el('dropzone').style.borderColor = 'rgba(139,92,246,0.5)'; el('dropzone').style.background = 'rgba(139,92,246,0.08)'; }
+      function dzDragLeave()  { el('dropzone').style.borderColor = 'rgba(139,92,246,0.25)'; el('dropzone').style.background = 'rgba(139,92,246,0.04)'; }
+      function dzDrop(e) { e.preventDefault(); dzDragLeave(); handleFile(e.dataTransfer.files[0]); }
+
       function handleFile(file) {
         if (!file) return;
         const ext = file.name.split('.').pop().toLowerCase();
-        
-        const allowedExts = ['html','pdf','txt','png','jpg','jpeg','gif','webp','svg','apk','zip','rar','docx','mp3','mp4','mkv','csv','xlsx'];
-        if (!allowedExts.includes(ext)) { toast('Unsupported format', 'err'); return; }
-        if (file.size > 50*1024*1024) { toast('Limit 50MB max', 'err'); return; }
-        
+        const allowed = ['html','pdf','txt','png','jpg','jpeg','gif','webp','svg','apk','zip','rar','docx','mp3','mp4','mkv','csv','xlsx'];
+        if (!allowed.includes(ext)) { toast('Unsupported file type', 'err'); return; }
+        if (file.size > 50*1024*1024) { toast('Max file size is 50MB', 'err'); return; }
         selectedFile = file;
-        el('dropzone').querySelector('.dz-label').textContent = '✅ ' + file.name;
+        el('dropzone').querySelector('.dz-label').textContent = '✓ ' + file.name;
       }
 
       async function publishPost() {
@@ -954,47 +1026,28 @@
             el('dzProgress').classList.remove('hidden');
             const safeName = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
             const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-              method: 'POST',
-              headers: { apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type': selectedFile.type },
-              body: selectedFile
+              method:'POST', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':selectedFile.type }, body:selectedFile
             });
             if (!r.ok) throw new Error();
             fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
           }
-          
           await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
-            method: 'POST',
-            headers: { apikey:SB_KEY, 'Content-Type':'application/json' },
-            body: JSON.stringify({ 
-              title: title||selectedFile?.name||'System Post', 
-              subject:desc||title, 
-              file_url:fileUrl, 
-              author_name:currentUser.display_name, 
-              author_email:currentUser.email, 
-              author_photo:currentUser.avatar_url 
-            })
+            method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' },
+            body: JSON.stringify({ title:title||selectedFile?.name||'Post', subject:desc||title, file_url:fileUrl, author_name:currentUser.display_name, author_email:currentUser.email, author_photo:currentUser.avatar_url })
           });
-          toast('Dispatched successfully', 'ok');
-          closeUpload(); loadPosts();
-        } catch {
-          toast('Dispatch vector crash', 'err');
-        } finally {
-          btn.disabled = false; btn.textContent = 'Publish';
-        }
+          toast('Published successfully', 'ok'); closeUpload(); loadPosts();
+        } catch { toast('Publish failed', 'err'); }
+        finally { btn.disabled = false; btn.textContent = 'Publish'; }
       }
 
       function setFilter(f) {
-        activeFilter = f; 
-        updateNavActive(f);
-        
+        activeFilter = f; updateNavActive(f);
         const mainHeader = el('mainHeader');
         const chatView = el('chatView');
         const feedView = el('feedView');
-
         if (f === 'people') {
           mainHeader?.classList.add('hidden');
           feedView.classList.add('hidden'); chatView.classList.remove('hidden');
-          
           closeThread(); renderChatUsers();
           if (!currentUser) openFostHubAuth(); else initChat();
         } else {
@@ -1005,41 +1058,24 @@
       }
 
       function updateNavActive(f) {
-        document.querySelectorAll('[data-filter]').forEach(el => {
-          const active = el.dataset.filter === f;
-          
-          if (el.tagName === 'A') {
-            el.classList.toggle('bg-indigo-50', active);
-            el.classList.toggle('dark:bg-slate-700', active);
-            el.classList.toggle('text-indigo-600', active);
-            el.classList.toggle('dark:text-indigo-400', active);
-            el.classList.toggle('text-slate-600', !active);
-            el.classList.toggle('dark:text-slate-400', !active);
+        document.querySelectorAll('[data-filter]').forEach(item => {
+          const active = item.dataset.filter === f;
+          if (item.tagName === 'A') {
+            item.classList.toggle('active', active);
+            if (!active) item.className = item.className.replace(/active/g,'').trim();
           } else {
-            el.classList.toggle('text-indigo-600', active);
-            el.classList.toggle('dark:text-indigo-400', active);
-            el.classList.toggle('text-slate-500', !active);
+            item.classList.toggle('active', active);
           }
-
-          const svg = el.querySelector('svg');
+          const svg = item.querySelector('svg');
           if (svg) {
-            if (active) {
-              svg.setAttribute('fill', 'currentColor');
-              svg.classList.add('fill-current');
-            } else {
-              svg.setAttribute('fill', 'none');
-              svg.classList.remove('fill-current');
-            }
+            svg.setAttribute('fill', active ? 'currentColor' : 'none');
           }
         });
       }
 
       function handleSearch() { searchQuery = el('searchInput').value.trim(); renderGrid(); }
 
-      /* ========================================================
-         CHAT, PRESENCE & VOICE RECORDING
-      ======================================================== */
-
+      /* ═══ CHAT ═══ */
       async function fetchActiveUsers() {
         try {
           const r = await fetch(`${SB_URL}/rest/v1/chat_users?order=last_active.desc`, { headers:{ apikey:SB_KEY } });
@@ -1055,12 +1091,12 @@
       function renderChatUsers() {
         const list = el('peopleList'); if (!list) return;
         const others = chatUsers.filter(u => u.uid !== chatUserId);
-        if (!others.length) { list.innerHTML='<div class="p-6 text-center text-xs text-slate-400">Empty workspace channel.</div>'; return; }
+        if (!others.length) { list.innerHTML='<div class="p-6 text-center text-xs text-violet-400/40">No one else here yet.</div>'; return; }
         list.innerHTML = others.map(u => {
-          const avatarHtml = u.photo ? `<img src="${esc(u.photo)}" class="w-full h-full object-cover">` : `<span class="font-bold">${u.name[0]}</span>`;
-          return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" onclick='openDM(${JSON.stringify(u)})'>
-            <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0 overflow-hidden shadow-sm">${avatarHtml}</div>
-            <div class="flex-1 truncate"><p class="font-semibold text-sm truncate">${esc(u.name)}</p></div>
+          const av = u.photo ? `<img src="${esc(u.photo)}" class="w-full h-full object-cover">` : `<span class="font-bold">${u.name[0]}</span>`;
+          return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-violet-900/20 hover:bg-violet-900/15 transition-colors" onclick='openDM(${JSON.stringify(u)})'>
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white shrink-0 overflow-hidden xcluice-glow-sm">${av}</div>
+            <div class="flex-1 truncate"><p class="font-semibold text-sm truncate text-slate-200">${esc(u.name)}</p></div>
           </div>`;
         }).join('');
       }
@@ -1071,7 +1107,6 @@
         el('chatThreadNameMobile').textContent = person.name;
         el('chatThreadAvatar').innerHTML = person.photo ? `<img src="${person.photo}" class="w-full h-full object-cover">` : person.name[0];
         el('chatThreadAvatarMobile').innerHTML = person.photo ? `<img src="${person.photo}" class="w-full h-full object-cover">` : person.name[0];
-        
         el('chatPlaceholder').classList.add('hidden');
         el('chatThreadView').classList.remove('hidden'); el('chatThreadView').classList.add('flex');
         el('chatThreadMobile').classList.remove('hidden'); el('chatThreadMobile').classList.add('flex');
@@ -1120,24 +1155,21 @@
           if (!currentThread) return !m.to_uid;
           return (m.uid===chatUserId && m.to_uid===currentThread.uid) || (m.uid===currentThread.uid && m.to_uid===chatUserId);
         });
-        
         boxes.forEach(boxId => {
           const box = el(boxId); if (!box) return;
           box.innerHTML = visible.map(m => {
             const isMe = m.uid === chatUserId;
-            
-            const isAudio = (m.text || '').startsWith('[AUDIO::');
+            const isAudio = (m.text||'').startsWith('[AUDIO::');
             let contentHtml = '';
             if (isAudio) {
-              const url = m.text.replace('[AUDIO::', '').replace(']', '');
+              const url = m.text.replace('[AUDIO::','').replace(']','');
               contentHtml = `<audio controls src="${esc(url)}" class="w-48 sm:w-60 mt-1"></audio>`;
             } else {
               contentHtml = `<p class="leading-relaxed break-words">${esc(m.text)}</p>`;
             }
-
-            return `<div class="flex ${isMe?'justify-end':'justify-start'} mb-2">
-              <div class="max-w-[75%] md:max-w-xs px-3.5 py-2 text-sm rounded-2xl ${isMe?'bg-indigo-600 text-white rounded-tr-none':'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 rounded-tl-none'} shadow-sm">
-                <p class="text-[10px] font-semibold opacity-75 mb-0.5">${esc(m.name)}</p>
+            return `<div class="flex ${isMe?'justify-end':'justify-start'} mb-2 chat-bubble">
+              <div class="max-w-[75%] md:max-w-xs px-3.5 py-2.5 text-sm rounded-2xl shadow-sm ${isMe?'text-white rounded-tr-none':'rounded-tl-none text-slate-100'}" style="${isMe?'background:linear-gradient(135deg,#7c3aed,#4f46e5);':'background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);'}">
+                <p class="text-[10px] font-bold opacity-60 mb-0.5 tracking-wide">${esc(m.name)}</p>
                 ${contentHtml}
               </div>
             </div>`;
@@ -1151,56 +1183,37 @@
         const input = el(isMobile ? 'chatInputMobile' : 'chatInput');
         const text = input.value.trim(); if (!text) return;
         input.value = '';
-        
-        const payload = { uid:chatUserId, name:currentUser.display_name, text, to_uid: currentThread?.uid || null };
-        chatMessages.push({...payload, created_at: new Date().toISOString()});
+        const payload = { uid:chatUserId, name:currentUser.display_name, text, to_uid:currentThread?.uid||null };
+        chatMessages.push({...payload, created_at:new Date().toISOString()});
         renderChatMessages();
-
         try {
-          await fetch(`${SB_URL}/rest/v1/chat_messages`, {
-            method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(payload)
-          });
+          await fetch(`${SB_URL}/rest/v1/chat_messages`, { method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         } catch {}
       }
 
-      /* --- VOICE RECORDING LOGIC --- */
-      let mediaRecorder;
-      let audioChunks = [];
-      let isRecording = false;
-      let cancelRecordingFlag = false;
-      let recTimerInt = null;
-      let recSeconds = 0;
+      /* ═══ VOICE RECORDING ═══ */
+      let mediaRecorder, audioChunks = [], isRecording = false, cancelRecordingFlag = false, recTimerInt = null, recSeconds = 0;
 
       async function startRecording(isMobile) {
         if (!currentUser) { openFostHubAuth(); return; }
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
           mediaRecorder = new MediaRecorder(stream);
           audioChunks = [];
-          
           mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
           mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks); 
-            stream.getTracks().forEach(t => t.stop()); 
-            if (audioBlob.size > 0 && !cancelRecordingFlag) {
-              await uploadAndSendAudio(audioBlob);
-            }
+            const audioBlob = new Blob(audioChunks);
+            stream.getTracks().forEach(t => t.stop());
+            if (audioBlob.size > 0 && !cancelRecordingFlag) await uploadAndSendAudio(audioBlob);
           };
-          
-          mediaRecorder.start();
-          isRecording = true;
-          cancelRecordingFlag = false;
+          mediaRecorder.start(); isRecording = true; cancelRecordingFlag = false;
           toggleRecordingUI(true, isMobile);
-        } catch (err) {
-          toast('Microphone access denied or unavailable', 'err');
-        }
+        } catch { toast('Microphone access denied', 'err'); }
       }
 
       function stopRecording(cancel, isMobile) {
         if (!isRecording) return;
-        cancelRecordingFlag = cancel;
-        mediaRecorder.stop();
-        isRecording = false;
+        cancelRecordingFlag = cancel; mediaRecorder.stop(); isRecording = false;
         toggleRecordingUI(false, isMobile);
       }
 
@@ -1208,16 +1221,13 @@
         const normal = el(isMobile ? 'chatInputWrapperMobile' : 'chatInputWrapper');
         const rec = el(isMobile ? 'chatRecordingWrapperMobile' : 'chatRecordingWrapper');
         const timerEl = el(isMobile ? 'recordTimerMobile' : 'recordTimer');
-        
         if (show) {
           normal.classList.add('hidden'); normal.classList.remove('flex');
           rec.classList.remove('hidden'); rec.classList.add('flex');
           recSeconds = 0; timerEl.textContent = '0:00';
           recTimerInt = setInterval(() => {
             recSeconds++;
-            const m = Math.floor(recSeconds / 60);
-            const s = (recSeconds % 60).toString().padStart(2, '0');
-            timerEl.textContent = `${m}:${s}`;
+            timerEl.textContent = `${Math.floor(recSeconds/60)}:${(recSeconds%60).toString().padStart(2,'0')}`;
           }, 1000);
         } else {
           normal.classList.remove('hidden'); normal.classList.add('flex');
@@ -1227,55 +1237,54 @@
       }
 
       async function uploadAndSendAudio(blob) {
-        toast('Sending voice message...', 'ok');
+        toast('Sending voice message…', 'ok');
         try {
           const safeName = `voice_${currentUser.username}_${Date.now()}.webm`;
           const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-            method: 'POST',
-            headers: { apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type': blob.type || 'audio/webm' },
-            body: blob
+            method:'POST', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':blob.type||'audio/webm' }, body:blob
           });
           if (!r.ok) throw new Error();
-          
           const url = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
-          
-          const payload = { uid:chatUserId, name:currentUser.display_name, text: `[AUDIO::${url}]`, to_uid: currentThread?.uid || null };
-          chatMessages.push({...payload, created_at: new Date().toISOString()});
+          const payload = { uid:chatUserId, name:currentUser.display_name, text:`[AUDIO::${url}]`, to_uid:currentThread?.uid||null };
+          chatMessages.push({...payload, created_at:new Date().toISOString()});
           renderChatMessages();
-
-          await fetch(`${SB_URL}/rest/v1/chat_messages`, {
-            method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(payload)
-          });
-        } catch (e) {
-          toast('Failed to send voice message', 'err');
-        }
+          await fetch(`${SB_URL}/rest/v1/chat_messages`, { method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        } catch { toast('Voice upload failed', 'err'); }
       }
-      /* ----------------------------- */
 
+      /* ═══ UTILS ═══ */
       function showOverlay(id) { el(id).classList.remove('hidden'); el(id).classList.add('flex'); }
       function hideOverlay(id) { el(id).classList.add('hidden'); el(id).classList.remove('flex'); }
-      function overlayClickClose(e, id) { 
+      function overlayClickClose(e, id) {
         if (e.target.id === id) {
           if (id === 'viewerOverlay') closeViewer();
           else if (id === 'uploadOverlay') closeUpload();
           else if (id === 'fosthubAuthOverlay') closeFostHubAuth();
-        } 
+        }
       }
-      
       function el(id) { return document.getElementById(id); }
-      function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+      function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
       function timeAgo(iso) {
-        const s=Math.floor((Date.now()-new Date(iso))/1000);
+        const s = Math.floor((Date.now()-new Date(iso))/1000);
         if(s<60) return 'now'; if(s<3600) return Math.floor(s/60)+'m ago';
         if(s<86400) return Math.floor(s/3600)+'h ago'; return new Date(iso).toLocaleDateString();
       }
-      function emptyState(ico, msg) { return `<div class="col-span-full text-center py-16"><div class="text-4xl mb-2 opacity-50">${ico}</div><p class="text-sm text-slate-400">${msg}</p></div>`; }
+      function emptyState(msg) {
+        return `<div class="col-span-full flex flex-col items-center py-20 gap-3">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(139,92,246,0.4)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <p class="text-sm text-violet-400/40 font-medium">${msg}</p>
+        </div>`;
+      }
       function toast(msg, type='ok') {
-        const el = document.createElement('div');
-        el.className = `pointer-events-auto px-4 py-2.5 rounded-xl text-xs font-semibold shadow-2xl border-l-4 ${type==='ok'?'bg-slate-900 text-white border-green-500':'bg-slate-900 text-white border-red-500'}`;
-        el.style.animation = 'fadeUp .2s ease-out'; el.textContent = msg;
-        document.getElementById('toastWrap').appendChild(el);
-        setTimeout(() => el.remove(), 3000);
+        const div = document.createElement('div');
+        const accent = type === 'ok' ? '#a78bfa' : '#f87171';
+        div.className = 'pointer-events-auto px-4 py-2.5 rounded-xl text-xs font-semibold shadow-2xl';
+        div.style.cssText = `background:rgba(8,5,20,0.95);border:1px solid ${accent}30;border-left:3px solid ${accent};color:#e2e8f0;animation:fadeUp .2s ease-out;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.4)`;
+        div.textContent = msg;
+        document.getElementById('toastWrap').appendChild(div);
+        setTimeout(() => div.remove(), 3000);
       }
     </script>
   </body>
