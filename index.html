@@ -1,1 +1,722 @@
-uehkejenenn
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Xcluice • web agency</title>
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js">
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Space Grotesk', 'sans-serif'],
+            body: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .selectable-text,
+    .selectable-text *,
+    input,
+    textarea {
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+      user-select: text !important;
+    }
+
+    /* scrollbars */
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #4c1d95;
+      border-radius: 4px;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* mesh background */
+    @keyframes meshShift {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+    .mesh-bg {
+      background: linear-gradient(135deg, #0a0a14 0%, #0e0520 25%, #080d1a 50%, #0a0a14 75%, #050214 100%);
+      background-size: 400% 400%;
+      animation: meshShift 18s ease infinite;
+    }
+    .sidebar-bg {
+      background: rgba(8, 5, 20, 0.95);
+      border-right: 1px solid rgba(139, 92, 246, 0.15);
+    }
+    .header-bg {
+      background: rgba(8, 5, 20, 0.9);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+    }
+
+    /* glow */
+    .xcluice-glow {
+      box-shadow: 0 0 24px rgba(139, 92, 246, 0.45), 0 0 48px rgba(139, 92, 246, 0.15);
+    }
+    .xcluice-glow-sm {
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+    }
+
+    .brand-text {
+      background: linear-gradient(135deg, #a78bfa 0%, #22d3ee 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .modal-bg {
+      background: rgba(4, 2, 12, 0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .glass-panel {
+      background: rgba(14, 5, 32, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      box-shadow: 0 0 60px rgba(139, 92, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .x-card {
+      background: rgba(14, 8, 28, 0.8);
+      border: 1px solid rgba(139, 92, 246, 0.12);
+      transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+      will-change: transform;
+      transform: translateZ(0);
+    }
+    .x-card:hover {
+      border-color: rgba(139, 92, 246, 0.35);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+    }
+
+    .nav-item {
+      transition: background 0.15s ease, color 0.15s ease;
+      border-radius: 8px;
+    }
+    .nav-item.active {
+      background: rgba(139, 92, 246, 0.15);
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, 0.25);
+    }
+    .bnav-item.active {
+      color: #a78bfa;
+    }
+    .bnav-item.active svg {
+      fill: #a78bfa;
+      color: #a78bfa;
+    }
+
+    .x-input {
+      background: rgba(139, 92, 246, 0.06);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      color: #e2e8f0;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .x-input:focus {
+      border-color: rgba(139, 92, 246, 0.5);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+    }
+    .x-input::placeholder {
+      color: rgba(139, 92, 246, 0.4);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      transition: all 0.15s ease;
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.35);
+      will-change: transform;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 28px rgba(124, 58, 237, 0.55);
+      filter: brightness(1.08);
+    }
+
+    .x-logo {
+      background: linear-gradient(135deg, #7c3aed, #22d3ee);
+      border-radius: 10px;
+      padding: 6px;
+      box-shadow: 0 0 18px rgba(124, 58, 237, 0.5);
+    }
+
+    .thumb-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      pointer-events: none;
+      display: block;
+    }
+    .viewer-iframe {
+      width: 100%;
+      height: 75vh;
+      border: none;
+      display: block;
+    }
+    #postMenu {
+      position: fixed;
+      z-index: 9999;
+      display: none;
+      min-width: 170px;
+    }
+    #postMenu.open {
+      display: block;
+    }
+    #toastWrap {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(.97)
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1)
+      }
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0
+      }
+      to {
+        opacity: 1
+      }
+    }
+    @keyframes slideRight {
+      from {
+        opacity: 0;
+        transform: translateX(20px)
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+    @keyframes bubbleIn {
+      from {
+        opacity: 0;
+        transform: scale(.9) translateY(6px)
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0)
+      }
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+    @keyframes cardEntrance {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .anim-modal {
+      animation: fadeUp .26s cubic-bezier(.16, 1, .3, 1) both;
+    }
+    .card-item {
+      animation: cardEntrance .35s cubic-bezier(.16, 1, .3, 1) both;
+    }
+    .card-item:nth-child(1) {
+      animation-delay: .04s;
+    }
+    .card-item:nth-child(2) {
+      animation-delay: .08s;
+    }
+    .card-item:nth-child(3) {
+      animation-delay: .12s;
+    }
+    .card-item:nth-child(4) {
+      animation-delay: .16s;
+    }
+    .card-item:nth-child(5) {
+      animation-delay: .20s;
+    }
+    .card-item:nth-child(6) {
+      animation-delay: .24s;
+    }
+    .chat-bubble {
+      animation: bubbleIn .2s ease-out both;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2.5px solid rgba(139, 92, 246, .2);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+    }
+
+    .theme-active {
+      background: rgba(139, 92, 246, 0.3);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      border-radius: 6px;
+    }
+
+    .x-dropdown {
+      background: rgba(10, 5, 22, 0.97);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 30px rgba(139, 92, 246, 0.1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .bottom-nav {
+      background: rgba(6, 3, 14, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(139, 92, 246, 0.15);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body class="mesh-bg text-slate-100 overflow-hidden" style="min-height:100vh;">
+  <div class="flex h-screen overflow-hidden">
+    <!-- sidebar desktop -->
+    <aside class="hidden md:flex flex-col w-64 sidebar-bg shrink-0">
+      <div class="flex items-center gap-3 h-14 px-5 border-b border-violet-900/30 cursor-pointer" id="aboutTrigger">
+        <div class="x-logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/>
+          </svg>
+        </div>
+        <div>
+          <span class="text-lg font-bold tracking-tight brand-text">Xcluice</span>
+          <p class="text-[9px] text-violet-400/60 font-medium tracking-widest uppercase -mt-0.5">Web Agency</p>
+        </div>
+      </div>
+      <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-sm font-medium active" data-filter="all" onclick="setFilter('all')"><i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i>Products</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="media" onclick="setFilter('media')"><i data-lucide="monitor" class="w-4 h-4 shrink-0"></i>Previews</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="docs" onclick="setFilter('docs')"><i data-lucide="folder-open" class="w-4 h-4 shrink-0"></i>Assets</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="html" onclick="setFilter('html')"><i data-lucide="code-2" class="w-4 h-4 shrink-0"></i>Live Demos</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm" data-filter="people" onclick="setFilter('people')"><i data-lucide="messages-square" class="w-4 h-4 shrink-0"></i>Discussions</a>
+        <div class="pt-4 mt-2 border-t border-violet-900/30">
+          <p class="px-3 mb-2 text-[10px] uppercase text-violet-500/50 font-bold tracking-widest">Workspace</p>
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-sm font-medium text-violet-400 border border-dashed border-violet-700/50 hover:bg-violet-900/20" onclick="openUpload()"><i data-lucide="upload-cloud" class="w-4 h-4 shrink-0"></i>Upload</a>
+          <a class="nav-item flex items-center gap-3 px-3 py-2.5 cursor-pointer text-violet-300/50 hover:text-violet-200 hover:bg-violet-900/20 text-sm mt-0.5" onclick="loadPosts(true)"><i data-lucide="refresh-cw" class="w-4 h-4 shrink-0"></i>Refresh</a>
+        </div>
+      </nav>
+      <div class="p-3 border-t border-violet-900/30">
+        <div class="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-violet-900/20 cursor-pointer transition-colors relative" onclick="toggleUserMenu(event)" id="userMenu">
+          <div id="userAvatarTop" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden xcluice-glow-sm"><span id="userInitial">?</span></div>
+          <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate" id="userNameTop">Sign in</p><p class="text-[10px] text-violet-400/60 font-medium" id="userRoleLabel">Guest</p></div>
+          <i data-lucide="chevron-up" class="w-3.5 h-3.5 text-violet-400/40 shrink-0"></i>
+          <div id="userDropdown" class="hidden absolute bottom-full left-0 right-0 mb-1 x-dropdown rounded-xl overflow-hidden z-50">
+            <div class="flex items-center gap-2 p-3 border-b border-violet-800/30 cursor-pointer hover:bg-violet-900/30" onclick="triggerAvatarUpload()"><i data-lucide="image" class="w-4 h-4 text-violet-400"></i><span class="text-sm font-medium text-slate-200">Change Avatar</span></div>
+            <div class="flex items-center gap-2 p-3 border-b border-violet-800/30 cursor-pointer hover:bg-violet-900/30" onclick="toggleThemeOptions(event)"><i data-lucide="palette" class="w-4 h-4 text-violet-400"></i><span class="text-sm font-medium text-slate-200">Theme</span><i data-lucide="chevron-right" class="w-3 h-3 text-violet-400/40 ml-auto"></i></div>
+            <div id="themeOptions" class="hidden bg-black/30 px-2 py-1.5 space-y-0.5">
+              <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-violet-900/30 text-slate-300" data-theme="dark" onclick="setThemeFn(event,'dark')">🌙 Dark</div>
+              <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-violet-900/30 text-slate-300" data-theme="light" onclick="setThemeFn(event,'light')">☀️ Light</div>
+              <div class="theme-choice flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm hover:bg-violet-900/30 text-slate-300" data-theme="system" onclick="setThemeFn(event,'system')">🖥️ System</div>
+            </div>
+            <div class="flex items-center gap-2 p-3 cursor-pointer text-red-400 hover:bg-red-900/20" onclick="logOut(event)"><i data-lucide="log-out" class="w-4 h-4"></i><span class="text-sm font-medium">Sign out</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <!-- main -->
+    <main class="flex-1 flex flex-col overflow-hidden min-w-0 relative">
+      <header id="mainHeader" class="flex items-center justify-between h-14 px-4 md:px-6 header-bg shrink-0 z-30 transition-all">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5 md:hidden cursor-pointer" id="mobileAboutTrigger">
+            <div class="x-logo p-1.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/></svg></div>
+            <span class="font-bold text-base brand-text">Xcluice</span>
+          </div>
+          <div class="relative hidden sm:block">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400/50 pointer-events-none"></i>
+            <input id="searchInput" type="text" placeholder="Search projects…" class="x-input pl-9 pr-4 py-2 text-sm rounded-xl w-56 md:w-72" oninput="handleSearch()" />
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="hidden md:flex items-center bg-violet-950/60 border border-violet-800/30 rounded-lg p-0.5 gap-0.5">
+            <button onclick="setThemeFn(event,'light')" data-theme="light" class="theme-btn p-1.5 rounded transition-colors hover:bg-violet-800/30 text-violet-300"><i data-lucide="sun" class="w-3.5 h-3.5"></i></button>
+            <button onclick="setThemeFn(event,'dark')" data-theme="dark" class="theme-btn p-1.5 rounded transition-colors hover:bg-violet-800/30 text-violet-300 theme-active"><i data-lucide="moon" class="w-3.5 h-3.5"></i></button>
+            <button onclick="setThemeFn(event,'system')" data-theme="system" class="theme-btn p-1.5 rounded transition-colors hover:bg-violet-800/30 text-violet-300"><i data-lucide="monitor" class="w-3.5 h-3.5"></i></button>
+          </div>
+          <div class="md:hidden relative" id="userMenuMobile" onclick="toggleUserMenuMobile(event)">
+            <div id="userAvatarMobile" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs overflow-hidden cursor-pointer xcluice-glow-sm"><span id="userInitialMobile">?</span></div>
+            <div id="userDropdownMobile" class="hidden absolute top-full right-0 mt-2 w-52 x-dropdown rounded-xl overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-violet-800/30"><p class="font-semibold text-sm" id="mobileUserName">Guest</p><p class="text-xs text-violet-400/60" id="mobileUserEmail"></p></div>
+              <div class="p-2 space-y-0.5">
+                <button onclick="triggerAvatarUpload()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-violet-900/30 text-sm"><i data-lucide="image" class="w-4 h-4 text-violet-400"></i>Change Avatar</button>
+                <button onclick="logOut(event)" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-red-900/20 text-sm"><i data-lucide="log-out" class="w-4 h-4"></i>Sign out</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="flex-1 overflow-y-auto scrollbar-thin" id="mainScroll">
+        <div id="feedView" class="pb-24 md:pb-6">
+          <div class="w-full pt-4 md:pt-6 pb-2" id="frame" style="margin:auto;position:relative;z-index:20;">
+            <iframe data-aa='2447671' src='//acceptable.a-ads.com/2447671/?size=Adaptive' style='border:0;padding:0;width:70%;height:auto;overflow:hidden;display:block;margin:auto;'></iframe>
+          </div>
+          <div class="px-4 py-3 md:px-6 md:py-4 flex items-center justify-between max-w-3xl mx-auto">
+            <div><h1 class="text-xl font-bold brand-text" id="feedTitle">Products</h1><p class="text-xs text-violet-400/50 mt-0.5" id="feedSubtitle">Client work & agency builds</p></div>
+            <button onclick="loadPosts(true)" class="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-200 transition-colors border border-violet-700/40 rounded-lg px-3 py-1.5 hover:bg-violet-900/20"><i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh</button>
+          </div>
+          <div class="grid grid-cols-1 max-w-3xl mx-auto md:gap-5 px-0 md:px-6" id="grid">
+            <div class="flex justify-center py-20"><div class="spinner" style="width:36px;height:36px;border-width:3px;"></div></div>
+          </div>
+        </div>
+        <div id="chatView" class="hidden h-full">
+          <div class="flex h-full">
+            <div id="chatListPane" class="w-full md:w-80 lg:w-96 shrink-0 flex flex-col sidebar-bg border-r border-violet-900/30">
+              <div class="px-4 py-3 border-b border-violet-900/30 flex items-center gap-2"><i data-lucide="messages-square" class="w-4 h-4 text-violet-400"></i><h2 class="text-sm font-bold brand-text">Discussions</h2></div>
+              <div id="peopleList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
+            </div>
+            <div id="chatThreadPane" class="hidden md:flex flex-1 flex-col min-w-0" style="background:rgba(4,2,12,0.6)">
+              <div id="chatPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-8">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);"><i data-lucide="message-circle" class="w-7 h-7 text-violet-400/60"></i></div>
+                <h3 class="text-base font-semibold text-violet-300/60">Select a conversation</h3><p class="text-xs text-violet-400/40 mt-1">Start a discussion with your team</p>
+              </div>
+              <div id="chatThreadView" class="hidden flex-col flex-1 min-h-0">
+                <div class="flex items-center gap-3 px-4 py-2.5 border-b border-violet-900/30 header-bg shrink-0">
+                  <button class="md:hidden p-1.5 rounded-full hover:bg-violet-900/30" onclick="closeThread()"><i data-lucide="arrow-left" class="w-4 h-4 text-violet-400"></i></button>
+                  <div id="chatThreadAvatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden xcluice-glow-sm"></div>
+                  <p class="font-semibold text-sm" id="chatThreadName">–</p>
+                </div>
+                <div id="chatMessages" class="flex-1 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3 min-h-0 selectable-text"></div>
+                <div class="px-4 py-2.5 border-t border-violet-900/30 header-bg shrink-0">
+                  <div id="chatInputWrapper" class="flex items-center gap-2 w-full">
+                    <input id="chatInput" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
+                    <button onclick="startRecording(false)" class="p-2 rounded-full hover:bg-violet-900/30 text-violet-400 transition-colors" style="border:1px solid rgba(139,92,246,0.2)"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                    <button id="sendBtn" onclick="sendChatMessage()" class="p-2 btn-primary rounded-full text-white"><i data-lucide="send" class="w-4 h-4"></i></button>
+                  </div>
+                  <div id="chatRecordingWrapper" class="hidden items-center justify-between w-full rounded-full px-4 py-1.5" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
+                    <div class="flex items-center gap-3"><div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div><span class="text-sm font-semibold text-red-400" id="recordTimer">0:00</span></div>
+                    <div class="flex items-center gap-1"><button onclick="stopRecording(true, false)" class="p-1.5 text-slate-400 hover:text-red-400 rounded-full transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="stopRecording(false, false)" class="p-1.5 text-white btn-primary rounded-full ml-1"><i data-lucide="send" class="w-4 h-4"></i></button></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="chatThreadMobile" class="hidden fixed top-0 bottom-16 left-0 right-0 flex-col z-40" style="background:rgba(4,2,12,0.97)">
+              <div class="flex items-center gap-3 px-3 py-2.5 border-b border-violet-900/30 header-bg shrink-0"><button class="p-1.5 rounded-full hover:bg-violet-900/30" onclick="closeThread()"><i data-lucide="arrow-left" class="w-4 h-4 text-violet-400"></i></button><div id="chatThreadAvatarMobile" class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden xcluice-glow-sm"></div><p class="font-semibold text-sm" id="chatThreadNameMobile">–</p></div>
+              <div id="chatMessagesMobile" class="flex-1 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3 min-h-0 selectable-text"></div>
+              <div class="px-4 py-2.5 border-t border-violet-900/30 header-bg shrink-0">
+                <div id="chatInputWrapperMobile" class="flex items-center gap-2 w-full"><input id="chatInputMobile" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" /><button onclick="startRecording(true)" class="p-2 rounded-full hover:bg-violet-900/30 text-violet-400 transition-colors" style="border:1px solid rgba(139,92,246,0.2)"><i data-lucide="mic" class="w-4 h-4"></i></button><button onclick="sendChatMessage()" class="p-2 btn-primary rounded-full text-white"><i data-lucide="send" class="w-4 h-4"></i></button></div>
+                <div id="chatRecordingWrapperMobile" class="hidden items-center justify-between w-full rounded-full px-4 py-1.5" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);"><div class="flex items-center gap-3"><div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div><span class="text-sm font-semibold text-red-400" id="recordTimerMobile">0:00</span></div><div class="flex items-center gap-1"><button onclick="stopRecording(true, true)" class="p-1.5 text-slate-400 hover:text-red-400 rounded-full transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="stopRecording(false, true)" class="p-1.5 text-white btn-primary rounded-full ml-1"><i data-lucide="send" class="w-4 h-4"></i></button></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bottom-nav z-50 grid grid-cols-5">
+        <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="all" onclick="setFilter('all')"><i data-lucide="layout-grid" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Products</span></button>
+        <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="media" onclick="setFilter('media')"><i data-lucide="monitor" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Previews</span></button>
+        <button id="fab" onclick="openUpload()" class="flex flex-col items-center justify-center"><div class="w-12 h-12 btn-primary rounded-full flex items-center justify-center -mt-5 border-4 xcluice-glow" style="border-color:rgba(4,2,12,0.9)"><i data-lucide="plus" class="w-5 h-5 text-white"></i></div></button>
+        <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="docs" onclick="setFilter('docs')"><i data-lucide="folder-open" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Assets</span></button>
+        <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="people" onclick="setFilter('people')"><i data-lucide="messages-square" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Discuss</span></button>
+      </nav>
+    </main>
+  </div>
+  <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)" />
+  <div id="postMenu" class="x-dropdown rounded-xl overflow-hidden"></div>
+  <div id="toastWrap"></div>
+  <div id="viewerOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-0 md:p-4 modal-bg" onclick="overlayClickClose(event,'viewerOverlay')">
+    <div class="relative md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[90vh] flex flex-col overflow-hidden anim-modal glass-panel">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-violet-800/30 shrink-0"><h3 class="font-bold text-base truncate flex-1 mr-3 brand-text" id="viewerTitle">–</h3><button onclick="closeViewer()" class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-300 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+      <div id="viewerContent" class="flex-1 overflow-auto min-h-0 flex items-center justify-center selectable-text" style="background:rgba(4,2,12,0.5)"></div>
+      <div class="flex items-center gap-3 px-4 py-4 border-t border-violet-800/30 shrink-0 header-bg"><div id="viewerAvatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden xcluice-glow-sm"></div><div class="min-w-0 flex-1"><p class="font-semibold text-sm truncate" id="viewerAuthor">–</p><p class="text-xs text-violet-400/50" id="viewerDate">–</p></div></div>
+    </div>
+  </div>
+  <div id="uploadOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-bg" onclick="overlayClickClose(event,'uploadOverlay')">
+    <div class="relative glass-panel rounded-2xl w-full max-w-md overflow-hidden anim-modal">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-violet-800/30"><div><h2 class="text-base font-bold brand-text">New Post</h2><p class="text-[10px] text-violet-400/50 mt-0.5">Share to the Xcluice workspace</p></div><button onclick="closeUpload()" class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-300 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+      <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
+        <div><label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Title</label><input id="inputTitle" type="text" placeholder="Give your post a title…" maxlength="80" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input" /></div>
+        <div><label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Description</label><textarea id="inputDesc" rows="3" placeholder="What's this about?" maxlength="1000" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input resize-none"></textarea></div>
+        <div><label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Attach File <span class="normal-case font-normal text-violet-400/30">(optional)</span></label>
+          <div id="dropzone" class="rounded-xl p-6 text-center cursor-pointer transition-all" style="border:2px dashed rgba(139,92,246,0.25);background:rgba(139,92,246,0.04);" onclick="document.getElementById('fileInput').click()" ondragover="dzDragOver(event)" ondragleave="dzDragLeave()" ondrop="dzDrop(event)"><i data-lucide="upload-cloud" class="w-10 h-10 mx-auto mb-2 text-violet-400/50 dz-icon"></i><p class="text-sm font-medium text-violet-300/70 dz-label">Drop file or click to browse</p><p class="text-xs text-violet-400/40 mt-1 dz-sub">Images, HTML, Docs, APK, ZIP, MP4, MP3 (max 50 MB)</p><div id="dzProgress" class="hidden mt-3 h-1 rounded-full overflow-hidden" style="background:rgba(139,92,246,0.15)"><div id="dzFill" class="h-full transition-all duration-300" style="width:0%;background:linear-gradient(90deg,#7c3aed,#22d3ee)"></div></div></div><input type="file" id="fileInput" class="hidden" onchange="fileChosen(event)" /></div>
+      </div>
+      <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-violet-800/30"><button onclick="closeUpload()" class="px-4 py-2 text-sm font-medium text-violet-300/60 hover:text-violet-200 hover:bg-violet-900/20 rounded-xl transition-colors">Cancel</button><button id="publishBtn" onclick="publishPost()" class="px-5 py-2 text-sm font-semibold btn-primary text-white rounded-xl">Publish</button></div>
+    </div>
+  </div>
+  <div id="fosthubAuthOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-bg" onclick="overlayClickClose(event,'fosthubAuthOverlay')">
+    <div class="relative glass-panel rounded-2xl w-full max-w-sm overflow-hidden anim-modal">
+      <div class="absolute -top-20 -right-20 w-44 h-44 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(124,58,237,0.4),transparent 70%);filter:blur(30px);"></div>
+      <div class="absolute -bottom-10 -left-10 w-36 h-36 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.2),transparent 70%);filter:blur(24px);"></div>
+      <div class="p-7 relative z-10">
+        <div class="flex justify-center mb-6"><div class="x-logo p-3.5 xcluice-glow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/></svg></div></div>
+        <h3 class="text-2xl font-bold text-center mb-1 brand-text" id="authTitle">Sign in to Xcluice</h3><p class="text-xs text-violet-400/50 text-center mb-7 font-medium" id="authSubtitle">Enter your workspace credentials</p>
+        <div class="space-y-4">
+          <div><label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Username</label><div class="flex items-center rounded-xl overflow-hidden" style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);"><input id="authUsername" type="text" placeholder="your name" autocomplete="off" class="flex-1 px-3.5 py-2.5 bg-transparent text-sm text-white placeholder-violet-400/30 outline-none" /><span class="px-3 text-xs text-violet-400/40 font-medium bg-violet-950/40 h-full py-2.5 border-l border-violet-800/30">@xcluice.io</span></div></div>
+          <div><label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Password</label><input id="authPassword" type="password" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl text-sm text-white x-input placeholder-violet-400/30" /></div>
+          <div id="confirmPassDiv" class="hidden"><label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Confirm Password</label><input id="authConfirmPass" type="password" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl text-sm text-white x-input placeholder-violet-400/30" /></div>
+          <button id="authSubmitBtn" onclick="submitAuth()" class="w-full mt-1 py-3 btn-primary text-white rounded-xl text-sm font-bold tracking-wide transition-all">Sign In</button>
+        </div>
+        <p class="text-center text-xs text-violet-400/40 mt-6" id="authToggleText">New here? <span class="text-violet-400 hover:text-violet-200 cursor-pointer font-semibold" onclick="toggleAuthMode()">Create account</span></p>
+      </div>
+    </div>
+  </div>
+  <div id="aboutOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-bg" onclick="overlayClickClose(event,'aboutOverlay')">
+    <div class="relative glass-panel rounded-2xl w-full max-w-md overflow-hidden anim-modal p-6 text-center">
+      <button onclick="hideOverlay('aboutOverlay')" class="absolute top-3 right-3 p-1.5 rounded-full hover:bg-violet-900/30 text-violet-300"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <div class="x-logo inline-flex p-3 mb-4 xcluice-glow"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/></svg></div>
+      <h2 class="text-2xl font-bold brand-text mb-3">Xcluice</h2>
+      <p class="text-sm text-violet-200/80 leading-relaxed mb-5">We are a boutique web agency crafting high-performance digital experiences. From interactive demos to full-scale products, Xcluice blends design and code to bring your vision to life.</p>
+      <div class="bg-violet-900/20 rounded-xl p-4 border border-violet-700/30">
+        <p class="text-xs text-violet-300/70 mb-1">Want to build something together?</p>
+        <a href="mailto:xcluice@gmail.com" class="text-lg font-semibold text-cyan-300 hover:underline">xcluice@gmail.com</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const refreshIcons = () => { if (typeof lucide !== 'undefined') lucide.createIcons(); };
+      refreshIcons();
+      const SB_URL = 'https://nzolsmouyulzqeaocejm.supabase.co';
+      const SB_KEY = 'sb_publishable_EGX3jDjRh5LiXjdTw2AXxA_e1YIaP4Q';
+      const BUCKET = 'homework-files';
+      const TABLE = 'homework';
+      const THEME_KEY = 'xcluice_theme';
+      const SESSION_KEY = 'xcluice_session';
+      const ADMIN_EMAIL = 'momin@fosthub.com';
+      let allPosts = [],
+        activeFilter = 'all',
+        searchQuery = '',
+        selectedFile = null;
+      let supabase = null,
+        supabaseReadyPromise = null;
+      let chatUserId = null,
+        chatUserName = null,
+        chatUserEmail = null,
+        chatUserPhoto = null;
+      let chatInitialized = false,
+        chatMessages = [],
+        chatUsers = [];
+      let presenceHeartbeat = null,
+        usersChannelSubscribed = false;
+      let currentThread = null,
+        currentUser = null,
+        chatPollInterval = null,
+        lastMessageId = null;
+      let authMode = 'login';
+      const saveSession = (u) => { try { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); } catch (e) {} };
+      const clearSession = () => { try { localStorage.removeItem(SESSION_KEY); } catch (e) {} };
+      const restoreSession = () => {
+        try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); if (s && s.id) setSignedInUser(s, true); } catch (e) {}
+      };
+      document.addEventListener('DOMContentLoaded', () => {
+        applyStoredTheme();
+        restoreSession();
+        loadPosts();
+        setInterval(loadPosts, 20000);
+        fetchActiveUsers();
+        setInterval(fetchActiveUsers, 30000);
+        loadSupabaseSdk().then(() => subscribeToActiveUsers());
+        document.addEventListener('click', e => {
+          ['userMenu', 'userMenuMobile', 'postMenu'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el.contains(e.target)) {
+              if (id === 'userMenu') closeUserDropdown();
+              if (id === 'userMenuMobile') document.getElementById('userDropdownMobile')?.classList.add('hidden');
+              if (id === 'postMenu') closePostMenu();
+            }
+          });
+        });
+        document.getElementById('aboutTrigger')?.addEventListener('click', (e) => { e.stopPropagation(); showOverlay('aboutOverlay'); });
+        document.getElementById('mobileAboutTrigger')?.addEventListener('click', (e) => { e.stopPropagation(); showOverlay('aboutOverlay'); });
+        setTimeout(() => updateNavActive(activeFilter), 50);
+      });
+      const loadSupabaseSdk = () => {
+        if (supabaseReadyPromise) return supabaseReadyPromise;
+        supabaseReadyPromise = new Promise((res) => {
+          if (window.supabase) { supabase = window.supabase.createClient(SB_URL, SB_KEY); return res(supabase); }
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+          s.onload = () => { supabase = window.supabase.createClient(SB_URL, SB_KEY); res(supabase); };
+          document.head.appendChild(s);
+        });
+        return supabaseReadyPromise;
+      };
+      const applyStoredTheme = () => { let t = 'dark'; try { t = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) {} applyTheme(t, false); };
+      const applyTheme = (theme, persist = true) => {
+        const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('theme-active', b.dataset.theme === theme));
+        document.querySelectorAll('.theme-choice').forEach(b => b.classList.toggle('font-bold', b.dataset.theme === theme));
+        if (persist) try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+      };
+      window.setThemeFn = (e, theme) => { e.stopPropagation(); applyTheme(theme); toast('Theme updated', 'ok'); closeUserDropdown(); document.getElementById('userDropdownMobile')?.classList.add('hidden'); };
+      window.toggleUserMenu = (e) => { e.stopPropagation(); if (!currentUser) { openFostHubAuth(); return; } document.getElementById('userDropdown').classList.toggle('hidden'); };
+      window.toggleUserMenuMobile = (e) => { e.stopPropagation(); if (!currentUser) { openFostHubAuth(); return; } document.getElementById('userDropdownMobile').classList.toggle('hidden'); };
+      const closeUserDropdown = () => { document.getElementById('userDropdown')?.classList.add('hidden'); document.getElementById('themeOptions')?.classList.add('hidden'); };
+      window.toggleThemeOptions = (e) => { e.stopPropagation(); document.getElementById('themeOptions').classList.toggle('hidden'); };
+      window.logOut = (e) => {
+        e.stopPropagation(); if (presenceHeartbeat) clearInterval(presenceHeartbeat); if (chatPollInterval) clearInterval(chatPollInterval);
+        clearSession(); currentUser = chatUserId = chatUserName = chatUserEmail = chatUserPhoto = null; chatInitialized = false; chatMessages = []; currentThread = null; lastMessageId = null;
+        document.getElementById('userAvatarTop').innerHTML = '<span id="userInitial">?</span>'; document.getElementById('userAvatarMobile').innerHTML = '<span id="userInitialMobile">?</span>';
+        document.getElementById('userNameTop').textContent = 'Sign in'; document.getElementById('userRoleLabel').textContent = 'Guest';
+        document.getElementById('mobileUserName').textContent = 'Guest'; document.getElementById('mobileUserEmail').textContent = '';
+        closeUserDropdown(); document.getElementById('userDropdownMobile')?.classList.add('hidden'); if (activeFilter === 'people') setFilter('all'); toast('Signed out', 'ok');
+      };
+      const openFostHubAuth = () => showOverlay('fosthubAuthOverlay');
+      window.toggleAuthMode = () => {
+        authMode = authMode === 'login' ? 'register' : 'login';
+        document.getElementById('authTitle').textContent = authMode === 'login' ? 'Sign in to Xcluice' : 'Join Xcluice';
+        document.getElementById('confirmPassDiv').classList.toggle('hidden', authMode === 'login');
+        document.getElementById('authSubmitBtn').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+      };
+      const generateHash = (str) => { let hash = 5381; for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash) + str.charCodeAt(i); return "fHx_" + Math.abs(hash).toString(16) + btoa(str).slice(0, 12); };
+      window.submitAuth = async () => {
+        const rawUser = document.getElementById('authUsername').value.trim().toLowerCase();
+        const pass = document.getElementById('authPassword').value;
+        if (!rawUser || !pass) { toast('Fields cannot be empty', 'err'); return; }
+        const cleanUser = rawUser.replace(/@xcluice\.io$/, '').replace(/[^a-z0-9_.]/g, '');
+        const emailStr = `${cleanUser}@fosthub.com`; const passHash = generateHash(pass);
+        const btn = document.getElementById('authSubmitBtn'); btn.disabled = true; btn.textContent = 'Processing…';
+        try {
+          if (authMode === 'register') {
+            const pass2 = document.getElementById('authConfirmPass').value; if (pass !== pass2) { toast('Passwords mismatch', 'err'); return; }
+            const check = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}`, { headers: { apikey: SB_KEY } });
+            if ((await check.json()).length > 0) { toast('Username taken', 'err'); return; }
+            const ins = await fetch(`${SB_URL}/rest/v1/fosthub_users`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ username: cleanUser, email: emailStr, password_hash: passHash, display_name: cleanUser.charAt(0).toUpperCase() + cleanUser.slice(1), role: 'Member' }) });
+            const newUser = (await ins.json())[0]; setSignedInUser(newUser); toast('Account created!', 'ok');
+          } else {
+            const sel = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}&password_hash=eq.${passHash}`, { headers: { apikey: SB_KEY } });
+            const users = await sel.json(); if (!users.length) { toast('Invalid credentials', 'err'); return; }
+            setSignedInUser(users[0]); toast(`Welcome back`, 'ok');
+          }
+        } catch (e) {} finally { btn.disabled = false; btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account'; }
+      };
+      const setSignedInUser = (profile, isRestore = false) => {
+        currentUser = profile; chatUserId = profile.id || ('usr_' + profile.username); chatUserName = profile.display_name; chatUserEmail = profile.email; chatUserPhoto = profile.avatar_url;
+        if (!isRestore) saveSession(currentUser); updateUserUI(); hideOverlay('fosthubAuthOverlay'); if (activeFilter === 'people') initChat();
+      };
+      const updateUserUI = () => {
+        if (!currentUser) return; const initial = currentUser.display_name.charAt(0).toUpperCase();
+        document.getElementById('userNameTop').textContent = currentUser.display_name; document.getElementById('userRoleLabel').textContent = currentUser.email === ADMIN_EMAIL ? '⚡ Admin' : currentUser.role;
+        document.getElementById('mobileUserName').textContent = currentUser.display_name; document.getElementById('mobileUserEmail').textContent = currentUser.email;
+        const imgHtml = currentUser.avatar_url ? `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover">` : `<span>${initial}</span>`;
+        document.getElementById('userAvatarTop').innerHTML = imgHtml; document.getElementById('userAvatarMobile').innerHTML = imgHtml;
+      };
+      window.triggerAvatarUpload = () => document.getElementById('avatarInput').click();
+      window.handleAvatarUpload = async (e) => {
+        const file = e.target.files[0]; if (!file || !currentUser) return; if (file.size > 2 * 1024 * 1024) { toast('Avatar max 2MB', 'err'); return; }
+        try {
+          const safeName = `avatar_${currentUser.username}_${Date.now()}`; const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, { method: 'POST', headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type }, body: file });
+          if (!r.ok) throw new Error(); const fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
+          await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method: 'PATCH', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_url: fileUrl }) });
+          currentUser.avatar_url = fileUrl; setSignedInUser(currentUser); loadPosts(false); fetchActiveUsers(); toast('Avatar updated!', 'ok');
+        } catch { toast('Upload failed', 'err'); }
+      };
+      const loadPosts = async (showSpinner = false) => {
+        if (showSpinner) document.getElementById('grid').innerHTML = '<div class="flex justify-center py-20"><div class="spinner" style="width:36px;height:36px;"></div></div>';
+        try { const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?order=created_at.desc`, { headers: { apikey: SB_KEY } }); allPosts = await r.json(); if (activeFilter !== 'people') renderGrid(); } catch { if (!allPosts.length) document.getElementById('grid').innerHTML = emptyState('Unable to load.'); }
+      };
+      const getFileType = (url) => { if (!url) return 'text'; const ext = url.split('?')[0].split('.').pop().toLowerCase(); if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'media'; if (['pdf', 'txt', 'docx', 'csv', 'xlsx'].includes(ext)) return 'docs'; if (ext === 'html') return 'html'; if (ext === 'apk') return 'apk'; if (['mp3', 'wav', 'ogg', 'webm', 'mp4', 'mkv'].includes(ext)) return 'media'; return 'other'; };
+      const renderGrid = () => {
+        let posts = allPosts; if (activeFilter !== 'all') posts = posts.filter(p => { const t = getFileType(p.file_url); return (activeFilter === 'media' && t === 'media') || (activeFilter === 'docs' && t === 'docs') || (activeFilter === 'html' && t === 'html'); });
+        if (searchQuery) { const q = searchQuery.toLowerCase(); posts = posts.filter(p => (p.title || '').toLowerCase().includes(q) || (p.subject || '').toLowerCase().includes(q)); }
+        document.getElementById('feedTitle').textContent = activeFilter === 'all' ? 'Products' : activeFilter; document.getElementById('grid').innerHTML = posts.length ? posts.map(p => cardHTML(p)).join('') : emptyState('No posts yet.');
+        refreshIcons(); hydrateHtmlThumbs();
+      };
+      const cardHTML = (p) => {
+        const type = getFileType(p.file_url); const thumbId = 'thumb_' + (p.id ?? Math.random().toString(36).slice(2));
+        let thumbHtml = p.file_url ? (type === 'media' ? `<img src="${p.file_url}" class="w-full h-full object-cover">` : `<div id="${thumbId}" class="card-thumb-pending w-full h-full flex items-center justify-center"><div class="spinner"></div></div>`) : `<div class="w-full h-full p-5 flex items-center justify-center"><p class="text-sm text-violet-200/80 line-clamp-4">${esc(p.subject || '')}</p></div>`;
+        return `<div class="card-item x-card md:rounded-2xl overflow-hidden cursor-pointer mb-4 md:mb-0" onclick="openViewer('${p.id}')"><div class="w-full aspect-video overflow-hidden relative">${thumbHtml}</div><div class="p-3 md:p-4 flex items-start gap-3"><div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 overflow-hidden xcluice-glow-sm">${p.author_photo ? `<img src="${esc(p.author_photo)}" class="w-full h-full object-cover">` : (p.author_name||'A')[0].toUpperCase()}</div><div class="flex-1 min-w-0"><h3 class="font-semibold text-sm line-clamp-2">${esc(p.subject||p.title||'Untitled')}</h3><p class="text-[11px] text-violet-400/50 mt-1">${esc(p.author_name||'')} · ${timeAgo(p.created_at)}</p></div></div></div>`;
+      };
+      const htmlSrcCache = new Map();
+      const hydrateHtmlThumbs = async () => { const nodes = document.querySelectorAll('.card-thumb-pending'); for (const node of nodes) { const url = node.dataset.htmlUrl; try { let html = htmlSrcCache.get(url); if (!html) { const r = await fetch(url); html = await r.text(); htmlSrcCache.set(url, html); } const iframe = document.createElement('iframe'); iframe.className = 'thumb-iframe'; iframe.srcdoc = html; node.replaceWith(iframe); } catch { node.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(139,92,246,0.4)"><circle cx="12" cy="12" r="10"/></svg>'; } } };
+      window.openPostMenu = (e, id) => { const post = allPosts.find(x => String(x.id) === String(id)); if (!post) return; const menu = document.getElementById('postMenu'); menu.innerHTML = (post.file_url ? `<a href="${esc(post.file_url)}" download class="flex items-center gap-2 px-4 py-3 text-sm">Download</a>` : '') + '<button class="flex items-center gap-2 px-4 py-3 text-sm text-red-400" onclick="deletePost(\'' + post.id + '\')">Delete</button>'; menu.classList.add('open'); };
+      window.closePostMenu = () => document.getElementById('postMenu').classList.remove('open');
+      window.deletePost = async (id) => { closePostMenu(); await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, { method: 'DELETE', headers: { apikey: SB_KEY } }); loadPosts(); };
+      window.openViewer = (id) => { const p = allPosts.find(x => String(x.id) === String(id)); if (!p) return; document.getElementById('viewerTitle').textContent = p.subject || p.title; document.getElementById('viewerContent').innerHTML = p.file_url ? `<img src="${p.file_url}" class="max-h-screen">` : `<p>${esc(p.subject||'')}</p>`; showOverlay('viewerOverlay'); };
+      window.closeViewer = () => hideOverlay('viewerOverlay');
+      window.openUpload = () => { if (!currentUser) { openFostHubAuth(); return; } showOverlay('uploadOverlay'); };
+      window.closeUpload = () => hideOverlay('uploadOverlay');
+      window.publishPost = async () => { const title = document.getElementById('inputTitle').value.trim(); if (!title && !selectedFile) return; const btn = document.getElementById('publishBtn'); btn.disabled = true; try { let fileUrl = null; if (selectedFile) { const safeName = `${Date.now()}_${selectedFile.name}`; await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': selectedFile.type }, body: selectedFile }); fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`; } await fetch(`${SB_URL}/rest/v1/${TABLE}`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: title || 'Post', subject: title, file_url: fileUrl, author_name: currentUser.display_name, author_email: currentUser.email }) }); toast('Published', 'ok'); closeUpload(); loadPosts(); } catch { toast('Failed', 'err'); } finally { btn.disabled = false; } };
+      window.setFilter = (f) => { activeFilter = f; updateNavActive(f); if (f === 'people') { document.getElementById('chatView').classList.remove('hidden'); document.getElementById('feedView').classList.add('hidden'); if (!currentUser) openFostHubAuth(); else initChat(); } else { document.getElementById('chatView').classList.add('hidden'); document.getElementById('feedView').classList.remove('hidden'); renderGrid(); } };
+      const updateNavActive = (f) => { document.querySelectorAll('[data-filter]').forEach(el => { el.classList.toggle('active', el.dataset.filter === f); }); };
+      window.handleSearch = () => { searchQuery = document.getElementById('searchInput').value.trim(); renderGrid(); };
+      const fetchActiveUsers = async () => { try { const r = await fetch(`${SB_URL}/rest/v1/chat_users?order=last_active.desc`, { headers: { apikey: SB_KEY } }); chatUsers = await r.json(); } catch {} };
+      const initChat = () => { if (chatInitialized) return; chatInitialized = true; fetchMessages(); registerPresence(); chatPollInterval = setInterval(fetchMessages, 4000); };
+      const fetchMessages = async () => { try { const r = await fetch(`${SB_URL}/rest/v1/chat_messages?order=created_at.asc`, { headers: { apikey: SB_KEY } }); chatMessages = await r.json(); } catch {} };
+      const registerPresence = async () => { if (!chatUserId) return; await fetch(`${SB_URL}/rest/v1/chat_users`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: chatUserId, name: currentUser.display_name, last_active: new Date().toISOString() }) }); };
+      window.sendChatMessage = async () => { const input = document.getElementById('chatInput'); const text = input.value.trim(); if (!text) return; input.value = ''; await fetch(`${SB_URL}/rest/v1/chat_messages`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: chatUserId, name: currentUser.display_name, text, to_uid: currentThread?.uid || null }) }); };
+      const showOverlay = (id) => { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); };
+      const hideOverlay = (id) => { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); };
+      window.overlayClickClose = (e, id) => { if (e.target.id === id) hideOverlay(id); };
+      const esc = (s) => { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+      const timeAgo = (iso) => { const s = Math.floor((Date.now() - new Date(iso)) / 1000); return s < 60 ? 'now' : s < 3600 ? Math.floor(s / 60) + 'm' : s < 86400 ? Math.floor(s / 3600) + 'h' : new Date(iso).toLocaleDateString(); };
+      const emptyState = (msg) => `<div class="col-span-full flex flex-col items-center py-20"><p class="text-sm text-violet-400/40">${msg}</p></div>`;
+      const toast = (msg) => { const div = document.createElement('div'); div.className = 'pointer-events-auto px-4 py-2 rounded-xl text-xs font-semibold'; div.style.background = 'rgba(8,5,20,0.95)'; div.textContent = msg; document.getElementById('toastWrap').appendChild(div); setTimeout(() => div.remove(), 3000); };
+      window.startRecording = () => {};
+      window.stopRecording = () => {};
+    })();
+  </script>
+</body>
+</html>
