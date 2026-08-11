@@ -496,10 +496,67 @@
       </main>
     </div>
 
+    <!-- ═══ NOTIFICATION GATE MODAL ═══ -->
+    <div id="notifGateOverlay" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 modal-bg">
+      <div class="relative glass-panel rounded-2xl w-full max-w-sm overflow-hidden anim-modal">
+        <!-- Animated blob -->
+        <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(124,58,237,0.45),transparent 70%);filter:blur(32px);animation:pulseGlow 3s ease-in-out infinite;"></div>
+
+        <div class="relative z-10 p-8 flex flex-col items-center text-center">
+          <!-- Bell icon with pulse ring -->
+          <div class="relative mb-6">
+            <div class="absolute inset-0 rounded-full animate-ping" style="background:rgba(139,92,246,0.25);"></div>
+            <div class="relative w-16 h-16 rounded-full flex items-center justify-center xcluice-glow" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
+          </div>
+
+          <h2 class="text-xl font-bold brand-text mb-2">Enable Notifications</h2>
+          <p class="text-sm text-violet-200/60 leading-relaxed mb-2">
+            To use <span class="text-violet-300 font-semibold">Discussions</span>, Xcluice needs notification permission.
+          </p>
+          <p class="text-xs text-violet-400/40 leading-relaxed mb-7">
+            You'll get instant alerts when someone sends you a message — even when the tab is in the background.
+          </p>
+
+          <!-- Feature list -->
+          <div class="w-full space-y-2.5 mb-7 text-left">
+            <div class="flex items-center gap-3 px-3 py-2 rounded-xl" style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.12);">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(139,92,246,0.2);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+              </div>
+              <span class="text-xs text-violet-200/70 font-medium">Instant message alerts in background</span>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-2 rounded-xl" style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.12);">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(139,92,246,0.2);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <span class="text-xs text-violet-200/70 font-medium">Never miss a reply from your team</span>
+            </div>
+            <div class="flex items-center gap-3 px-3 py-2 rounded-xl" style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.12);">
+              <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(139,92,246,0.2);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <span class="text-xs text-violet-200/70 font-medium">Secure, no spam — only Xcluice messages</span>
+            </div>
+          </div>
+
+          <button id="notifAllowBtn" onclick="requestNotifPermission()" class="w-full py-3.5 btn-primary text-white rounded-xl text-sm font-bold tracking-wide mb-3 flex items-center justify-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Allow Notifications to Continue
+          </button>
+          <button onclick="skipNotifGate()" class="text-xs text-violet-400/35 hover:text-violet-400/60 transition-colors py-1">
+            Skip for now (limited experience)
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ OVERLAYS ═══ -->
     <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)" />
-
-    <!-- ═══ XCLUICE INFO MODAL ═══ -->
     <div id="xcluiceInfoOverlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-bg" onclick="overlayClickClose(event,'xcluiceInfoOverlay')">
       <div class="relative glass-panel rounded-2xl w-full max-w-sm overflow-hidden anim-modal">
         <!-- Glow blobs -->
@@ -1123,10 +1180,7 @@
         }
 
         if (f === 'people') {
-          mainHeader?.classList.add('hidden');
-          feedView.classList.add('hidden'); chatView.classList.remove('hidden');
-          closeThread(); renderChatUsers();
-          if (!currentUser) openFostHubAuth(); else initChat();
+          openDiscussionsGated();
         } else {
           mainHeader?.classList.remove('hidden');
           chatView.classList.add('hidden'); feedView.classList.remove('hidden');
@@ -1169,7 +1223,138 @@
 
       function handleSearch() { searchQuery = el('searchInput').value.trim(); renderGrid(); }
 
-      /* ═══ CHAT ═══ */
+      /* ═══ NOTIFICATIONS & SERVICE WORKER ═══ */
+      let swRegistration = null;
+      let notifPermission = Notification?.permission || 'default';
+
+      // Inline Service Worker as a Blob so it works without a separate SW file
+      const SW_CODE = `
+        self.addEventListener('install', () => self.skipWaiting());
+        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+
+        self.addEventListener('message', (e) => {
+          if (e.data && e.data.type === 'SHOW_NOTIF') {
+            const { title, body, icon, tag } = e.data;
+            self.registration.showNotification(title, {
+              body,
+              icon: icon || '/favicon.ico',
+              tag,
+              badge: icon || '/favicon.ico',
+              vibrate: [100, 50, 100],
+              requireInteraction: false,
+              data: { url: self.location.origin }
+            });
+          }
+        });
+
+        self.addEventListener('notificationclick', (e) => {
+          e.notification.close();
+          e.waitUntil(
+            self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+              if (clients.length > 0) { clients[0].focus(); return; }
+              self.clients.openWindow(e.notification.data?.url || '/');
+            })
+          );
+        });
+      `;
+
+      async function registerServiceWorker() {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+          const blob = new Blob([SW_CODE], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(blob);
+          swRegistration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+          // Wait for it to be active
+          await navigator.serviceWorker.ready;
+        } catch(e) {
+          // Blob SW may be blocked in some browsers — silent fallback
+          console.warn('SW registration failed:', e);
+        }
+      }
+
+      async function requestNotifPermission() {
+        const btn = el('notifAllowBtn');
+        btn.textContent = 'Requesting…'; btn.disabled = true;
+        try {
+          const result = await Notification.requestPermission();
+          notifPermission = result;
+          if (result === 'granted') {
+            await registerServiceWorker();
+            hideOverlay('notifGateOverlay');
+            toast('Notifications enabled ✓', 'ok');
+            // Actually open discussions now
+            _openDiscussions();
+            // Send a test notification after 1.5s
+            setTimeout(() => fireNotif('Xcluice Discussions', 'Notifications are working! 🔔'), 1500);
+          } else {
+            btn.textContent = 'Allow Notifications to Continue';
+            btn.disabled = false;
+            toast('Permission denied — notifications blocked', 'err');
+          }
+        } catch(e) {
+          btn.textContent = 'Allow Notifications to Continue';
+          btn.disabled = false;
+          toast('Could not request permission', 'err');
+        }
+      }
+
+      function skipNotifGate() {
+        hideOverlay('notifGateOverlay');
+        toast('Notifications skipped — some features limited', 'ok');
+        _openDiscussions();
+      }
+
+      function fireNotif(title, body, senderPhoto) {
+        if (notifPermission !== 'granted') return;
+        // If tab is visible, skip — user can see it
+        if (document.visibilityState === 'visible' && activeFilter === 'people') return;
+
+        const tag = 'xcluice-msg-' + Date.now();
+        // Use SW if available for richer notifications
+        if (swRegistration && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIF',
+            title,
+            body,
+            icon: senderPhoto || null,
+            tag
+          });
+        } else {
+          // Fallback: direct Notification API
+          new Notification(title, { body, tag, icon: senderPhoto || null, vibrate: [100,50,100] });
+        }
+      }
+
+      // Gate check before opening discussions
+      function openDiscussionsGated() {
+        if (!('Notification' in window)) {
+          // Browser doesn't support — just open
+          _openDiscussions(); return;
+        }
+        if (Notification.permission === 'granted') {
+          notifPermission = 'granted';
+          if (!swRegistration) registerServiceWorker();
+          _openDiscussions();
+        } else if (Notification.permission === 'denied') {
+          // Already blocked — show warning toast and open anyway
+          toast('Notifications blocked in browser settings', 'err');
+          _openDiscussions();
+        } else {
+          // Show gate modal
+          showOverlay('notifGateOverlay');
+        }
+      }
+
+      function _openDiscussions() {
+        const mainHeader = el('mainHeader');
+        const chatView = el('chatView');
+        const feedView = el('feedView');
+        mainHeader?.classList.add('hidden');
+        feedView.classList.add('hidden');
+        chatView.classList.remove('hidden');
+        closeThread(); renderChatUsers();
+        if (!currentUser) openFostHubAuth(); else initChat();
+      }
       async function fetchActiveUsers() {
         try {
           const r = await fetch(`${SB_URL}/rest/v1/chat_users?order=last_active.desc`, { headers:{ apikey:SB_KEY } });
@@ -1219,8 +1404,25 @@
           const r = await fetch(url, { headers:{ apikey:SB_KEY } });
           const msgs = await r.json();
           if (msgs.length > 0) {
+            const isInitialLoad = !lastMessageId;
             chatMessages = lastMessageId ? [...chatMessages, ...msgs] : msgs;
             lastMessageId = msgs[msgs.length-1].id;
+
+            // Fire notifications for new incoming messages (not on initial load)
+            if (!isInitialLoad) {
+              msgs.forEach(m => {
+                if (m.uid === chatUserId) return; // skip own messages
+                // Only notify if: global message (no to_uid) OR DM to us
+                const isDMToMe = m.to_uid === chatUserId;
+                const isGlobal = !m.to_uid;
+                if (isDMToMe || isGlobal) {
+                  const preview = (m.text || '').startsWith('[AUDIO::') ? '🎤 Voice message' : m.text;
+                  const title = isDMToMe ? `💬 ${m.name} (DM)` : `💬 ${m.name}`;
+                  fireNotif(title, preview, null);
+                }
+              });
+            }
+
             renderChatMessages();
           }
         } catch {}
