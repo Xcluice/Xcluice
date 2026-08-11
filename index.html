@@ -1223,54 +1223,8 @@
 
       function handleSearch() { searchQuery = el('searchInput').value.trim(); renderGrid(); }
 
-      /* ═══ NOTIFICATIONS & SERVICE WORKER ═══ */
-      let swRegistration = null;
+      /* ═══ NOTIFICATIONS ═══ */
       let notifPermission = Notification?.permission || 'default';
-
-      // Inline Service Worker as a Blob so it works without a separate SW file
-      const SW_CODE = `
-        self.addEventListener('install', () => self.skipWaiting());
-        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-
-        self.addEventListener('message', (e) => {
-          if (e.data && e.data.type === 'SHOW_NOTIF') {
-            const { title, body, icon, tag } = e.data;
-            self.registration.showNotification(title, {
-              body,
-              icon: icon || '/favicon.ico',
-              tag,
-              badge: icon || '/favicon.ico',
-              vibrate: [100, 50, 100],
-              requireInteraction: false,
-              data: { url: self.location.origin }
-            });
-          }
-        });
-
-        self.addEventListener('notificationclick', (e) => {
-          e.notification.close();
-          e.waitUntil(
-            self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-              if (clients.length > 0) { clients[0].focus(); return; }
-              self.clients.openWindow(e.notification.data?.url || '/');
-            })
-          );
-        });
-      `;
-
-      async function registerServiceWorker() {
-        if (!('serviceWorker' in navigator)) return;
-        try {
-          const blob = new Blob([SW_CODE], { type: 'application/javascript' });
-          const swUrl = URL.createObjectURL(blob);
-          swRegistration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
-          // Wait for it to be active
-          await navigator.serviceWorker.ready;
-        } catch(e) {
-          // Blob SW may be blocked in some browsers — silent fallback
-          console.warn('SW registration failed:', e);
-        }
-      }
 
       async function requestNotifPermission() {
         const btn = el('notifAllowBtn');
@@ -1279,12 +1233,9 @@
           const result = await Notification.requestPermission();
           notifPermission = result;
           if (result === 'granted') {
-            await registerServiceWorker();
             hideOverlay('notifGateOverlay');
             toast('Notifications enabled ✓', 'ok');
-            // Actually open discussions now
             _openDiscussions();
-            // Send a test notification after 1.5s
             setTimeout(() => fireNotif('Xcluice Discussions', 'Notifications are working! 🔔'), 1500);
           } else {
             btn.textContent = 'Allow Notifications to Continue';
@@ -1304,25 +1255,19 @@
         _openDiscussions();
       }
 
-      function fireNotif(title, body, senderPhoto) {
+      function fireNotif(title, body) {
         if (notifPermission !== 'granted') return;
-        // If tab is visible, skip — user can see it
         if (document.visibilityState === 'visible' && activeFilter === 'people') return;
-
-        const tag = 'xcluice-msg-' + Date.now();
-        // Use SW if available for richer notifications
-        if (swRegistration && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'SHOW_NOTIF',
-            title,
+        try {
+          new Notification(title, {
             body,
-            icon: senderPhoto || null,
-            tag
+            icon: 'https://api.dicebear.com/7.x/initials/svg?seed=X&backgroundColor=7c3aed&textColor=ffffff',
+            badge: 'https://api.dicebear.com/7.x/initials/svg?seed=X&backgroundColor=7c3aed&textColor=ffffff',
+            tag: 'xcluice-msg',
+            renotify: true,
+            vibrate: [100, 50, 100]
           });
-        } else {
-          // Fallback: direct Notification API
-          new Notification(title, { body, tag, icon: senderPhoto || null, vibrate: [100,50,100] });
-        }
+        } catch(e) {}
       }
 
       // Gate check before opening discussions
@@ -1333,7 +1278,6 @@
         }
         if (Notification.permission === 'granted') {
           notifPermission = 'granted';
-          if (!swRegistration) registerServiceWorker();
           _openDiscussions();
         } else if (Notification.permission === 'denied') {
           // Already blocked — show warning toast and open anyway
@@ -1398,33 +1342,48 @@
         el('chatThreadMobile').classList.add('hidden');
       }
 
+      // Track IDs already in chatMessages to prevent duplicates
+      const seenMsgIds = new Set();
+
       async function fetchMessages() {
         try {
-          const url = lastMessageId ? `${SB_URL}/rest/v1/chat_messages?id=gt.${lastMessageId}&order=created_at.asc` : `${SB_URL}/rest/v1/chat_messages?order=created_at.asc&limit=100`;
+          const url = lastMessageId
+            ? `${SB_URL}/rest/v1/chat_messages?id=gt.${lastMessageId}&order=created_at.asc`
+            : `${SB_URL}/rest/v1/chat_messages?order=created_at.asc&limit=100`;
           const r = await fetch(url, { headers:{ apikey:SB_KEY } });
           const msgs = await r.json();
-          if (msgs.length > 0) {
-            const isInitialLoad = !lastMessageId;
-            chatMessages = lastMessageId ? [...chatMessages, ...msgs] : msgs;
-            lastMessageId = msgs[msgs.length-1].id;
+          if (!msgs.length) return;
 
-            // Fire notifications for new incoming messages (not on initial load)
-            if (!isInitialLoad) {
-              msgs.forEach(m => {
-                if (m.uid === chatUserId) return; // skip own messages
-                // Only notify if: global message (no to_uid) OR DM to us
-                const isDMToMe = m.to_uid === chatUserId;
-                const isGlobal = !m.to_uid;
-                if (isDMToMe || isGlobal) {
-                  const preview = (m.text || '').startsWith('[AUDIO::') ? '🎤 Voice message' : m.text;
-                  const title = isDMToMe ? `💬 ${m.name} (DM)` : `💬 ${m.name}`;
-                  fireNotif(title, preview, null);
-                }
-              });
-            }
+          const isInitialLoad = !lastMessageId;
+          const newMsgs = [];
 
-            renderChatMessages();
+          msgs.forEach(m => {
+            // Dedupe by real DB id — skip anything we already have
+            if (m.id && seenMsgIds.has(m.id)) return;
+            if (m.id) seenMsgIds.add(m.id);
+            newMsgs.push(m);
+          });
+
+          if (!newMsgs.length) return;
+
+          chatMessages = [...chatMessages.filter(m => m.id), ...newMsgs];
+          lastMessageId = msgs[msgs.length - 1].id;
+
+          // Fire notifications for incoming messages (not on first load)
+          if (!isInitialLoad) {
+            newMsgs.forEach(m => {
+              if (m.uid === chatUserId) return;
+              const isDMToMe = m.to_uid === chatUserId;
+              const isGlobal = !m.to_uid;
+              if (isDMToMe || isGlobal) {
+                const preview = (m.text||'').startsWith('[AUDIO::') ? '🎤 Voice message' : m.text;
+                const title = isDMToMe ? `💬 ${m.name} (DM)` : `💬 ${m.name} · Discussions`;
+                fireNotif(title, preview);
+              }
+            });
           }
+
+          renderChatMessages();
         } catch {}
       }
 
@@ -1479,11 +1438,32 @@
         const input = el(isMobile ? 'chatInputMobile' : 'chatInput');
         const text = input.value.trim(); if (!text) return;
         input.value = '';
-        const payload = { uid:chatUserId, name:currentUser.display_name, text, to_uid:currentThread?.uid||null };
-        chatMessages.push({...payload, created_at:new Date().toISOString()});
+
+        // Optimistic local message with a temp id so deduplication works
+        const tempId = 'temp_' + Date.now();
+        const optimistic = { id: tempId, uid:chatUserId, name:currentUser.display_name, text, to_uid:currentThread?.uid||null, created_at:new Date().toISOString(), _temp: true };
+        seenMsgIds.add(tempId);
+        chatMessages.push(optimistic);
         renderChatMessages();
+
         try {
-          await fetch(`${SB_URL}/rest/v1/chat_messages`, { method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+          const res = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+            method:'POST',
+            headers:{ apikey:SB_KEY, 'Content-Type':'application/json', Prefer:'return=representation' },
+            body:JSON.stringify({ uid:chatUserId, name:currentUser.display_name, text, to_uid:currentThread?.uid||null })
+          });
+          if (res.ok) {
+            const [saved] = await res.json();
+            if (saved?.id) {
+              // Replace temp with real — mark real id as seen so poll skips it
+              seenMsgIds.add(saved.id);
+              const idx = chatMessages.findIndex(m => m.id === tempId);
+              if (idx !== -1) { chatMessages[idx] = saved; }
+              // Advance lastMessageId if this is newer
+              if (!lastMessageId || saved.id > lastMessageId) lastMessageId = saved.id;
+              renderChatMessages();
+            }
+          }
         } catch {}
       }
 
@@ -1542,9 +1522,26 @@
           if (!r.ok) throw new Error();
           const url = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
           const payload = { uid:chatUserId, name:currentUser.display_name, text:`[AUDIO::${url}]`, to_uid:currentThread?.uid||null };
-          chatMessages.push({...payload, created_at:new Date().toISOString()});
+
+          // Optimistic with temp id
+          const tempId = 'temp_audio_' + Date.now();
+          seenMsgIds.add(tempId);
+          chatMessages.push({...payload, id: tempId, created_at:new Date().toISOString(), _temp:true});
           renderChatMessages();
-          await fetch(`${SB_URL}/rest/v1/chat_messages`, { method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+
+          const res = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+            method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json', Prefer:'return=representation'}, body:JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const [saved] = await res.json();
+            if (saved?.id) {
+              seenMsgIds.add(saved.id);
+              const idx = chatMessages.findIndex(m => m.id === tempId);
+              if (idx !== -1) chatMessages[idx] = saved;
+              if (!lastMessageId || saved.id > lastMessageId) lastMessageId = saved.id;
+              renderChatMessages();
+            }
+          }
         } catch { toast('Voice upload failed', 'err'); }
       }
 
