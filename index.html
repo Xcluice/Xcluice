@@ -3,7 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Xcluice</title>
+
+    <!-- ═══ SEO: Primary Meta Tags ═══ -->
+    <title>Xcluice — Web Design Agency  | Fast, Mobile-First Websites</title>
+    <meta name="title" content="Xcluice — Web Design Agency  | Fast, Mobile-First Websites" />
+    <meta name="description" content="Xcluice builds fast, mobile-first websites for local businesses — landing pages, business sites, and full web apps. built to convert. Get a quote today." />
+    <meta name="keywords" content="web design , web development agency, mobile-first websites, landing page design, business website design, web app development, Xcluice" />
+    <meta name="author" content="Xcluice" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://xcluice.vercel.app/" />
+
+    <!-- ═══ SEO: Open Graph / Facebook / WhatsApp ═══ -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://xcluice.vercel.app/" />
+    <meta property="og:site_name" content="Xcluice" />
+    <meta property="og:title" content="Xcluice — Web Design Agency in Kashmir" />
+    <meta property="og:description" content="Fast, mobile-first websites for local businesses — landing pages, business sites, and full web apps. Built to convert." />
+    <meta property="og:image" content="https://xcluice.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ═══ SEO: Twitter Card ═══ -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://xcluice.vercel.app/" />
+    <meta name="twitter:title" content="Xcluice — Web Design Agency in Kashmir" />
+    <meta name="twitter:description" content="Fast, mobile-first websites for local businesses — landing pages, business sites, and full web apps. Built to convert." />
+    <meta name="twitter:image" content="https://xcluice.vercel.app/og-image.png" />
+
+    <!-- ═══ SEO: Structured Data (LocalBusiness) ═══ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfessionalService",
+      "name": "Xcluice",
+      "url": "https://xcluice.vercel.app/",
+      "description": "Xcluice builds fast, mobile-first websites for local businesses — landing pages, business sites, and full web apps.",
+      "email": "xcluice@gmail.com",
+      "areaServed": "Kashmir",
+      "address": {
+        "@type": "PostalAddress",
+        "addressRegion": "Jammu and Kashmir",
+        "addressCountry": "IN"
+      },
+      "makesOffer": [
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Landing Page Design" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Business Website Design" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Web App Development" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Monthly Website Retainer" } }
+      ]
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -239,6 +290,22 @@
     </style>
   </head>
   <body class="mesh-bg text-slate-100 overflow-hidden" style="min-height:100vh;">
+
+    <!-- ═══ SEO: Crawlable content (visually hidden, read by search engines & screen readers) ═══ -->
+    <div class="sr-only" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+      <h1>Xcluice — Web Design Agency in Kashmir</h1>
+      <p>Xcluice is a web design and development agency based in Kashmir, India. We build fast, mobile-first websites for local businesses — animated, modern, and built to convert visitors into customers.</p>
+      <h2>Our Services</h2>
+      <ul>
+        <li>Landing page design for local businesses</li>
+        <li>Business website design and development</li>
+        <li>Custom web application development</li>
+        <li>Mobile-first, fully responsive websites</li>
+        <li>Website animations and interactive experiences</li>
+        <li>Monthly website retainer and maintenance plans</li>
+      </ul>
+      <p>Contact Xcluice at xcluice@gmail.com to get a fast, modern website built for your business.</p>
+    </div>
 
     <div class="flex h-screen overflow-hidden">
 
@@ -1011,7 +1078,7 @@
 
         let thumbHtml = '';
         if (p.file_url) {
-          if (type === 'media') thumbHtml = `<img src="${p.file_url}" class="w-full h-full object-cover">`;
+          if (type === 'media') thumbHtml = `<img src="${p.file_url}" alt="${esc(p.subject||p.title||'Xcluice project preview')}" loading="lazy" class="w-full h-full object-cover">`;
           else if (type === 'html') thumbHtml = `<div id="${thumbId}" data-html-url="${esc(p.file_url)}" class="card-thumb-pending w-full h-full flex items-center justify-center"><div class="spinner" style="width:28px;height:28px;border-width:2px;"></div></div>`;
           else if (type === 'docs') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(14,8,28,0.8))"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.7)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>`;
           else if (type === 'apk') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(14,8,28,0.8))"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>`;
@@ -1022,7 +1089,7 @@
           </div>`;
         }
 
-        const avatarHtml = p.author_photo ? `<img src="${esc(p.author_photo)}" class="w-full h-full object-cover">` : `<span class="text-sm font-bold text-white">${author[0].toUpperCase()}</span>`;
+        const avatarHtml = p.author_photo ? `<img src="${esc(p.author_photo)}" alt="${esc(author)}" loading="lazy" class="w-full h-full object-cover">` : `<span class="text-sm font-bold text-white">${author[0].toUpperCase()}</span>`;
 
         return `
           <div class="card-item x-card md:rounded-2xl overflow-hidden cursor-pointer mb-4 md:mb-0" onclick="openViewer('${p.id}')">
@@ -1096,12 +1163,12 @@
         el('viewerTitle').textContent  = p.subject || p.title || 'Post';
         el('viewerAuthor').textContent = author;
         el('viewerDate').textContent   = new Date(p.created_at).toLocaleString();
-        el('viewerAvatar').innerHTML   = p.author_photo ? `<img src="${esc(p.author_photo)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
+        el('viewerAvatar').innerHTML   = p.author_photo ? `<img src="${esc(p.author_photo)}" alt="${esc(author)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
         const content = el('viewerContent');
         if (p.file_url) {
           const type = getFileType(p.file_url);
           if (type === 'media') {
-            content.innerHTML = `<img src="${p.file_url}" class="w-full h-auto max-h-screen object-contain" style="background:rgba(4,2,12,0.8)">`;
+            content.innerHTML = `<img src="${p.file_url}" alt="${esc(p.subject||p.title||'Xcluice project')}" class="w-full h-auto max-h-screen object-contain" style="background:rgba(4,2,12,0.8)">`;
           } else if (type === 'html') {
             content.innerHTML = `<div id="vfw" class="w-full flex items-center justify-center h-[75vh]"><div class="spinner"></div></div>`;
             fetch(p.file_url).then(r=>r.text()).then(html=>{
