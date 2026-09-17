@@ -807,8 +807,7 @@
       const BUCKET = 'homework-files';
       const TABLE  = 'homework';
       const THEME_KEY   = 'xcluice_theme';
-      const SESSION_KEY = 'xcluice_session';
-      const ADMIN_EMAIL = 'momin@fosthub.com';
+      const ADMIN_EMAIL = 'momin@xcluice.io';
 
       let allPosts = [], activeFilter = 'all', searchQuery = '', selectedFile = null;
       let supabase = null, supabaseReadyPromise = null;
@@ -817,24 +816,17 @@
       let presenceHeartbeat = null, usersChannelSubscribed = false;
       let currentThread = null, currentUser = null, chatPollInterval = null, lastMessageId = null;
       let authMode = 'login';
+      let currentSession = null; // Supabase Auth session (has access_token)
 
-      function saveSession(u)   { try { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); } catch(e){} }
-      function clearSession()   { try { localStorage.removeItem(SESSION_KEY); } catch(e){} }
-      function restoreSession() {
-        try {
-          const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-          if (s && s.id) setSignedInUser(s, true);
-        } catch(e){}
-      }
-
-      document.addEventListener('DOMContentLoaded', () => {
+      document.addEventListener('DOMContentLoaded', async () => {
         applyStoredTheme();
-        restoreSession();
+        await loadSupabaseSdk();
+        await restoreSupabaseSession();
         loadPosts();
         setInterval(loadPosts, 20000);
         fetchActiveUsers();
         setInterval(fetchActiveUsers, 30000);
-        loadSupabaseSdk().then(() => subscribeToActiveUsers());
+        subscribeToActiveUsers();
 
         // Seed base history entry so back never leaves the app
         const hashFilter = location.hash.replace('#', '') || 'all';
@@ -868,6 +860,15 @@
         return supabaseReadyPromise;
       }
 
+      /* ═══ AUTH HEADERS HELPER ═══
+         Reads/writes that should run as the logged-in user use the user's
+         access_token as the Bearer (so auth.uid() resolves in RLS).
+         Falls back to the plain publishable key for logged-out/public calls. */
+      function authHeaders(extra = {}) {
+        const token = currentSession?.access_token || SB_KEY;
+        return { apikey: SB_KEY, Authorization: `Bearer ${token}`, ...extra };
+      }
+
       function applyStoredTheme() {
         let t = 'dark';
         try { t = localStorage.getItem(THEME_KEY) || 'dark'; } catch(e){}
@@ -890,11 +891,12 @@
       function closeUserDropdown() { document.getElementById('userDropdown')?.classList.add('hidden'); document.getElementById('themeOptions')?.classList.add('hidden'); }
       function toggleThemeOptions(e) { e.stopPropagation(); document.getElementById('themeOptions').classList.toggle('hidden'); }
 
-      function logOut(e) {
+      async function logOut(e) {
         e.stopPropagation();
         if (presenceHeartbeat) clearInterval(presenceHeartbeat);
         if (chatPollInterval)  clearInterval(chatPollInterval);
-        clearSession();
+        try { await supabase.auth.signOut(); } catch(err){}
+        currentSession = null;
         currentUser = chatUserId = chatUserName = chatUserEmail = chatUserPhoto = null;
         chatInitialized = false; chatMessages = []; currentThread = null; lastMessageId = null;
         document.getElementById('userAvatarTop').innerHTML = '<span id="userInitial">?</span>';
@@ -921,62 +923,93 @@
           : 'Already have an account? <span class="text-violet-400 hover:text-violet-200 cursor-pointer font-semibold" onclick="toggleAuthMode()">Sign in</span>';
       }
 
-      function generateHash(str) {
-        let hash = 5381;
-        for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash) + str.charCodeAt(i);
-        return "fHx_" + Math.abs(hash).toString(16) + btoa(str).slice(0, 12);
-      }
-
+      /* Real Supabase Auth: no email is ever sent, since "Confirm email"
+         is switched off in the project. We just synthesize an internal
+         email from the username so people never need a real inbox. */
       async function submitAuth() {
         const rawUser = el('authUsername').value.trim().toLowerCase();
         const pass = el('authPassword').value;
         if (!rawUser || !pass) { toast('Fields cannot be empty', 'err'); return; }
         const cleanUser = rawUser.replace(/@xcluice\.io$/, '').replace(/@fosthub\.com$/, '').replace(/[^a-z0-9_.]/g, '');
         if (cleanUser.length < 3) { toast('Username min 3 characters', 'err'); return; }
-        const emailStr = `${cleanUser}@fosthub.com`;
-        const passHash = generateHash(pass);
+        if (pass.length < 6) { toast('Password min 6 characters', 'err'); return; }
+        const emailStr = `${cleanUser}@xcluice.io`;
         const btn = el('authSubmitBtn');
         btn.disabled = true; btn.textContent = 'Processing…';
         try {
+          await loadSupabaseSdk();
           if (authMode === 'register') {
             const pass2 = el('authConfirmPass').value;
             if (pass !== pass2) { toast('Passwords do not match', 'err'); throw new Error('mismatch'); }
-            const check = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}`, { headers:{ apikey:SB_KEY } });
-            const existing = await check.json();
-            if (existing.length > 0) { toast('Username already taken', 'err'); throw new Error('exists'); }
-            const ins = await fetch(`${SB_URL}/rest/v1/fosthub_users`, {
-              method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json', Prefer:'return=representation' },
-              body: JSON.stringify({ username:cleanUser, email:emailStr, password_hash:passHash, display_name:cleanUser.charAt(0).toUpperCase()+cleanUser.slice(1), role:'Member' })
+
+            const { data, error } = await supabase.auth.signUp({
+              email: emailStr,
+              password: pass,
+              options: { data: { username: cleanUser, display_name: cleanUser.charAt(0).toUpperCase()+cleanUser.slice(1) } }
             });
-            if (!ins.ok) throw new Error('Server reject');
-            const newUser = (await ins.json())[0];
-            setSignedInUser(newUser); toast('Account created!', 'ok');
+            if (error) {
+              if (/already registered|already exists/i.test(error.message)) toast('Username already taken', 'err');
+              else toast(error.message, 'err');
+              throw error;
+            }
+            currentSession = data.session; // present immediately since email confirm is off
+            const profile = await fetchOwnProfile(data.user.id, { username: cleanUser, email: emailStr, display_name: cleanUser.charAt(0).toUpperCase()+cleanUser.slice(1) });
+            setSignedInUser(profile);
+            toast('Account created!', 'ok');
           } else {
-            const sel = await fetch(`${SB_URL}/rest/v1/fosthub_users?username=eq.${cleanUser}&password_hash=eq.${passHash}`, { headers:{ apikey:SB_KEY } });
-            const users = await sel.json();
-            if (!users || users.length === 0) { toast('Invalid credentials', 'err'); throw new Error('invalid'); }
-            setSignedInUser(users[0]); toast(`Welcome back, ${users[0].display_name}`, 'ok');
+            const { data, error } = await supabase.auth.signInWithPassword({ email: emailStr, password: pass });
+            if (error) { toast('Invalid credentials', 'err'); throw error; }
+            currentSession = data.session;
+            const profile = await fetchOwnProfile(data.user.id);
+            setSignedInUser(profile);
+            toast(`Welcome back, ${profile.display_name}`, 'ok');
           }
         } catch(e) { console.log(e); }
         finally { btn.disabled = false; btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account'; }
       }
 
+      // The profile row (fosthub_users) is auto-created by a DB trigger on
+      // signup. Give it a brief moment to land, then read it back.
+      async function fetchOwnProfile(userId, fallback = null) {
+        for (let i = 0; i < 5; i++) {
+          const r = await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${userId}`, { headers: authHeaders() });
+          const rows = await r.json();
+          if (rows && rows.length) return rows[0];
+          await new Promise(res => setTimeout(res, 300));
+        }
+        // Fallback shape if the trigger hasn't caught up yet
+        return { id: userId, username: fallback?.username, email: fallback?.email, display_name: fallback?.display_name || 'User', role: 'member', avatar_url: null };
+      }
+
+      async function restoreSupabaseSession() {
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session) {
+            currentSession = data.session;
+            const profile = await fetchOwnProfile(data.session.user.id);
+            setSignedInUser(profile, true);
+          }
+          supabase.auth.onAuthStateChange((_event, session) => {
+            currentSession = session;
+          });
+        } catch(e) { console.log('session restore failed', e); }
+      }
+
       function setSignedInUser(profile, isRestore = false) {
         currentUser = profile;
-        chatUserId = profile.id || ('usr_' + profile.username);
+        chatUserId = profile.id;
         chatUserName = profile.display_name; chatUserEmail = profile.email; chatUserPhoto = profile.avatar_url;
-        if (!isRestore) saveSession(currentUser);
         updateUserUI(); closeFostHubAuth();
         if (activeFilter === 'people') initChat();
         fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${profile.id}`, {
-          method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'},
+          method:'PATCH', headers: authHeaders({'Content-Type':'application/json'}),
           body: JSON.stringify({last_active:new Date().toISOString()})
         }).catch(()=>{});
       }
 
       function updateUserUI() {
         if (!currentUser) return;
-        const initial = currentUser.display_name.charAt(0).toUpperCase();
+        const initial = (currentUser.display_name||'?').charAt(0).toUpperCase();
         const isAdmin = currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin';
         el('userNameTop').textContent = currentUser.display_name;
         el('userRoleLabel').textContent = isAdmin ? '⚡ Admin' : currentUser.role;
@@ -998,13 +1031,13 @@
         try {
           const safeName = `avatar_${currentUser.username}_${Date.now()}`;
           const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-            method:'POST', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':file.type }, body:file
+            method:'POST', headers: authHeaders({'Content-Type':file.type}), body:file
           });
           if (!r.ok) throw new Error();
           const fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
-          await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({avatar_url:fileUrl}) });
-          await fetch(`${SB_URL}/rest/v1/${TABLE}?author_email=eq.${currentUser.email}`, { method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({author_photo:fileUrl}) });
-          await fetch(`${SB_URL}/rest/v1/chat_users?uid=eq.${chatUserId}`, { method:'PATCH', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({photo:fileUrl}) });
+          await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method:'PATCH', headers: authHeaders({'Content-Type':'application/json'}), body:JSON.stringify({avatar_url:fileUrl}) });
+          await fetch(`${SB_URL}/rest/v1/${TABLE}?author_email=eq.${currentUser.email}`, { method:'PATCH', headers: authHeaders({'Content-Type':'application/json'}), body:JSON.stringify({author_photo:fileUrl}) });
+          await fetch(`${SB_URL}/rest/v1/chat_users?uid=eq.${chatUserId}`, { method:'PATCH', headers: authHeaders({'Content-Type':'application/json'}), body:JSON.stringify({photo:fileUrl}) });
           currentUser.avatar_url = fileUrl; setSignedInUser(currentUser);
           loadPosts(false); fetchActiveUsers(); toast('Avatar updated!', 'ok');
         } catch { toast('Upload failed', 'err'); }
@@ -1149,7 +1182,7 @@
       async function deletePost(id) {
         closePostMenu();
         try {
-          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, { method:'DELETE', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}` } });
+          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, { method:'DELETE', headers: authHeaders() });
           if (!r.ok) throw new Error();
           toast('Post deleted', 'ok'); loadPosts();
         } catch { toast('Delete failed', 'err'); }
@@ -1222,13 +1255,13 @@
             el('dzProgress').classList.remove('hidden');
             const safeName = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
             const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-              method:'POST', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':selectedFile.type }, body:selectedFile
+              method:'POST', headers: authHeaders({'Content-Type':selectedFile.type}), body:selectedFile
             });
             if (!r.ok) throw new Error();
             fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
           }
           await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
-            method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' },
+            method:'POST', headers: authHeaders({'Content-Type':'application/json'}),
             body: JSON.stringify({ title:title||selectedFile?.name||'Post', subject:desc||title, file_url:fileUrl, author_name:currentUser.display_name, author_email:currentUser.email, author_photo:currentUser.avatar_url })
           });
           toast('Published successfully', 'ok'); closeUpload(); loadPosts();
@@ -1417,7 +1450,7 @@
           const url = lastMessageId
             ? `${SB_URL}/rest/v1/chat_messages?id=gt.${lastMessageId}&order=created_at.asc`
             : `${SB_URL}/rest/v1/chat_messages?order=created_at.asc&limit=100`;
-          const r = await fetch(url, { headers:{ apikey:SB_KEY } });
+          const r = await fetch(url, { headers: authHeaders() });
           const msgs = await r.json();
           if (!msgs.length) return;
 
@@ -1465,7 +1498,7 @@
         if (!chatUserId || !currentUser) return;
         try {
           await fetch(`${SB_URL}/rest/v1/chat_users`, {
-            method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'},
+            method:'POST', headers: authHeaders({'Content-Type':'application/json', Prefer:'resolution=merge-duplicates'}),
             body: JSON.stringify({uid:chatUserId, name:currentUser.display_name, email:currentUser.email, photo:currentUser.avatar_url, last_active:new Date().toISOString()})
           });
         } catch {}
@@ -1516,7 +1549,7 @@
         try {
           const res = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
             method:'POST',
-            headers:{ apikey:SB_KEY, 'Content-Type':'application/json', Prefer:'return=representation' },
+            headers: authHeaders({'Content-Type':'application/json', Prefer:'return=representation'}),
             body:JSON.stringify({ uid:chatUserId, name:currentUser.display_name, text, to_uid:currentThread?.uid||null })
           });
           if (res.ok) {
@@ -1584,7 +1617,7 @@
         try {
           const safeName = `voice_${currentUser.username}_${Date.now()}.webm`;
           const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-            method:'POST', headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':blob.type||'audio/webm' }, body:blob
+            method:'POST', headers: authHeaders({'Content-Type':blob.type||'audio/webm'}), body:blob
           });
           if (!r.ok) throw new Error();
           const url = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
@@ -1597,7 +1630,7 @@
           renderChatMessages();
 
           const res = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
-            method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json', Prefer:'return=representation'}, body:JSON.stringify(payload)
+            method:'POST', headers: authHeaders({'Content-Type':'application/json', Prefer:'return=representation'}), body:JSON.stringify(payload)
           });
           if (res.ok) {
             const [saved] = await res.json();
