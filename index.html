@@ -852,10 +852,30 @@
         if (supabaseReadyPromise) return supabaseReadyPromise;
         supabaseReadyPromise = new Promise((res, rej) => {
           if (window.supabase) { supabase = window.supabase.createClient(SB_URL, SB_KEY); return res(supabase); }
+
+          const timeout = setTimeout(() => {
+            supabaseReadyPromise = null; // let a retry try again later
+            rej(new Error('Supabase SDK load timed out'));
+          }, 10000);
+
           const s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0';
-          s.onload = () => { supabase = window.supabase.createClient(SB_URL, SB_KEY); res(supabase); };
-          s.onerror = rej;
+          s.onload = () => {
+            clearTimeout(timeout);
+            try {
+              if (!window.supabase) throw new Error('window.supabase missing after script load');
+              supabase = window.supabase.createClient(SB_URL, SB_KEY);
+              res(supabase);
+            } catch (e) {
+              supabaseReadyPromise = null;
+              rej(e);
+            }
+          };
+          s.onerror = () => {
+            clearTimeout(timeout);
+            supabaseReadyPromise = null;
+            rej(new Error('Failed to fetch Supabase SDK script'));
+          };
           document.head.appendChild(s);
         });
         return supabaseReadyPromise;
@@ -938,7 +958,12 @@
         const btn = el('authSubmitBtn');
         btn.disabled = true; btn.textContent = 'Processing…';
         try {
-          await loadSupabaseSdk();
+          try {
+            await loadSupabaseSdk();
+          } catch (sdkErr) {
+            toast('Could not load auth service. Check your connection and retry.', 'err');
+            throw sdkErr;
+          }
           if (authMode === 'register') {
             const pass2 = el('authConfirmPass').value;
             if (pass !== pass2) { toast('Passwords do not match', 'err'); throw new Error('mismatch'); }
