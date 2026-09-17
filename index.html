@@ -961,7 +961,7 @@
           try {
             await loadSupabaseSdk();
           } catch (sdkErr) {
-            toast('Could not load auth service. Check your connection and retry.', 'err');
+            toast('Auth load failed: ' + (sdkErr?.message || sdkErr), 'err');
             throw sdkErr;
           }
           if (authMode === 'register') {
