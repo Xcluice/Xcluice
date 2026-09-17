@@ -820,13 +820,14 @@
 
       document.addEventListener('DOMContentLoaded', async () => {
         applyStoredTheme();
-        await loadSupabaseSdk();
-        await restoreSupabaseSession();
         loadPosts();
         setInterval(loadPosts, 20000);
         fetchActiveUsers();
         setInterval(fetchActiveUsers, 30000);
         subscribeToActiveUsers();
+
+        // Auth/session restore doesn't block the feed — runs in background
+        loadSupabaseSdk().then(() => restoreSupabaseSession());
 
         // Seed base history entry so back never leaves the app
         const hashFilter = location.hash.replace('#', '') || 'all';
@@ -852,7 +853,7 @@
         supabaseReadyPromise = new Promise((res, rej) => {
           if (window.supabase) { supabase = window.supabase.createClient(SB_URL, SB_KEY); return res(supabase); }
           const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+          s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0';
           s.onload = () => { supabase = window.supabase.createClient(SB_URL, SB_KEY); res(supabase); };
           s.onerror = rej;
           document.head.appendChild(s);
