@@ -988,13 +988,22 @@
               else toast(error.message, 'err');
               throw error;
             }
+            if (!data.session) {
+              // No session means Supabase still wants an email confirmation.
+              toast('Account created, but "Confirm email" is still ON in Supabase Auth settings, so sign-in is blocked. Turn it off, then sign in.', 'err');
+              return;
+            }
             currentSession = data.session; // present immediately since email confirm is off
             const profile = await fetchOwnProfile(data.user.id, { username: cleanUser, email: emailStr, display_name: cleanUser.charAt(0).toUpperCase()+cleanUser.slice(1) });
             setSignedInUser(profile);
             toast('Account created!', 'ok');
           } else {
             const { data, error } = await supabase.auth.signInWithPassword({ email: emailStr, password: pass });
-            if (error) { toast('Invalid credentials', 'err'); throw error; }
+            if (error) {
+              const unconfirmed = error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message || '');
+              toast(unconfirmed ? 'Email not confirmed: "Confirm email" is still ON in Supabase Auth settings.' : 'Invalid credentials', 'err');
+              throw error;
+            }
             currentSession = data.session;
             const profile = await fetchOwnProfile(data.user.id);
             setSignedInUser(profile);
@@ -2001,7 +2010,7 @@
         div.style.cssText = `background:rgba(8,5,20,0.95);border:1px solid ${accent}30;border-left:3px solid ${accent};color:#e2e8f0;animation:fadeUp .2s ease-out;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.4)`;
         div.textContent = msg;
         document.getElementById('toastWrap').appendChild(div);
-        setTimeout(() => div.remove(), 3000);
+        setTimeout(() => div.remove(), Math.max(3000, msg.length * 55));
       }
     </script>
   </body>
