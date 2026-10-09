@@ -200,6 +200,13 @@
       /* ── Thumb & Viewer ── */
       .thumb-iframe { width: 100%; height: 100%; border: none; pointer-events: none; display: block; }
       .viewer-iframe { width: 100%; height: 75vh; border: none; display: block; }
+
+      /* ── PDF viewer ── */
+      .pdf-page { position: relative; background: #fff; border-radius: 6px; overflow: hidden; margin: 0 auto 12px; box-shadow: 0 6px 28px rgba(0,0,0,0.45), 0 0 0 1px rgba(139,92,246,0.18); }
+      .pdf-page canvas { display: block; }
+      .pdf-tool { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; color: #c4b5fd; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2); transition: background .15s ease, transform .1s ease; }
+      .pdf-tool:active { transform: scale(.92); background: rgba(139,92,246,0.25); }
+      .pdf-tool[disabled] { opacity: .35; pointer-events: none; }
       #postMenu { position: fixed; z-index: 9999; display: none; min-width: 170px; }
       #postMenu.open { display: block; }
       #toastWrap { position: fixed; bottom: 80px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
@@ -1126,6 +1133,7 @@
         grid.innerHTML = posts.map(p => cardHTML(p)).join('');
         refreshIcons();
         hydrateHtmlThumbs();
+        hydratePdfThumbs();
       }
 
       const badgeColors = { media:'from-cyan-600/20 to-cyan-500/10 text-cyan-300 border-cyan-500/25', docs:'from-blue-600/20 to-blue-500/10 text-blue-300 border-blue-500/25', html:'from-violet-600/20 to-violet-500/10 text-violet-300 border-violet-500/25', apk:'from-green-600/20 to-green-500/10 text-green-300 border-green-500/25', text:'from-slate-600/20 to-slate-500/10 text-slate-300 border-slate-500/25', archive:'from-orange-600/20 to-orange-500/10 text-orange-300 border-orange-500/25', other:'from-slate-600/20 to-slate-500/10 text-slate-300 border-slate-500/25' };
@@ -1142,6 +1150,7 @@
         if (p.file_url) {
           if (type === 'media') thumbHtml = `<img src="${p.file_url}" alt="${esc(p.subject||p.title||'Xcluice project preview')}" loading="lazy" class="w-full h-full object-cover">`;
           else if (type === 'html') thumbHtml = `<div id="${thumbId}" data-html-url="${esc(p.file_url)}" class="card-thumb-pending w-full h-full flex items-center justify-center"><div class="spinner" style="width:28px;height:28px;border-width:2px;"></div></div>`;
+          else if (type === 'docs' && isPdf(p.file_url)) thumbHtml = pdfThumbHtml(p.file_url);
           else if (type === 'docs') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(14,8,28,0.8))"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.7)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>`;
           else if (type === 'apk') thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(14,8,28,0.8))"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>`;
           else thumbHtml = `<div class="w-full h-full flex flex-col items-center justify-center" style="background:rgba(14,8,28,0.8)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(139,92,246,0.5)" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></div>`;
@@ -1240,6 +1249,8 @@
               iframe.srcdoc = html;
               el('vfw').replaceWith(iframe);
             });
+          } else if (isPdf(p.file_url)) {
+            renderPdfViewer(p, content);
           } else {
             content.innerHTML = `<div class="p-12 text-center"><a href="${p.file_url}" target="_blank" class="px-5 py-2.5 btn-primary text-white rounded-xl text-sm font-semibold inline-block">Download File</a></div>`;
           }
@@ -1248,7 +1259,289 @@
         }
         showOverlay('viewerOverlay');
       }
-      function closeViewer() { hideOverlay('viewerOverlay'); el('viewerContent').innerHTML = ''; }
+      function closeViewer() { teardownPdfViewer(); hideOverlay('viewerOverlay'); el('viewerContent').innerHTML = ''; }
+
+      /* ═══ PDF SUPPORT ═══
+         Phones can't preview PDFs in an iframe, so pages are drawn with
+         pdf.js. It is only fetched the first time a PDF is shown, so it never
+         slows down the feed. Pinned to 3.11.174: newer builds are ESM-only and
+         don't expose the global that a plain script tag needs. */
+      const PDFJS_BASE = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
+      const PDF_ZOOMS = [0.75, 1, 1.5, 2, 3];
+      let pdfjsPromise = null;
+      const pdfView = { token: 0, task: null, doc: null, observer: null, wraps: [], zoomIdx: 1, queue: Promise.resolve(), aspect: 1.414, scroller: null, cssWidth: 0, lastW: 0 };
+
+      function isPdf(url) { return !!url && url.split('?')[0].toLowerCase().endsWith('.pdf'); }
+
+      function loadPdfJs() {
+        if (pdfjsPromise) return pdfjsPromise;
+        pdfjsPromise = new Promise((res, rej) => {
+          if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js'; return res(window.pdfjsLib); }
+          const timeout = setTimeout(() => { pdfjsPromise = null; rej(new Error('PDF engine load timed out')); }, 20000);
+          const s = document.createElement('script');
+          s.src = PDFJS_BASE + 'pdf.min.js';
+          s.onload = () => {
+            clearTimeout(timeout);
+            if (!window.pdfjsLib) { pdfjsPromise = null; return rej(new Error('pdfjsLib missing after script load')); }
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+            res(window.pdfjsLib);
+          };
+          s.onerror = () => { clearTimeout(timeout); pdfjsPromise = null; rej(new Error('Failed to fetch PDF engine')); };
+          document.head.appendChild(s);
+        });
+        return pdfjsPromise;
+      }
+
+      function teardownPdfViewer() {
+        const st = pdfView;
+        st.token++;
+        st.observer?.disconnect(); st.observer = null;
+        st.wraps.forEach(w => { try { w._task?.cancel(); } catch(e){} });
+        st.wraps = [];
+        try { st.task?.destroy(); } catch(e){}
+        try { st.doc?.destroy(); } catch(e){}
+        st.task = null; st.doc = null; st.scroller = null;
+        st.queue = Promise.resolve();
+      }
+
+      function pdfFallback(container, url, err) {
+        container.innerHTML = `<div class="p-10 text-center flex flex-col items-center gap-3">
+          <p class="text-sm text-violet-300/70 font-medium">Couldn't preview this PDF here.</p>
+          <a href="${esc(url)}" target="_blank" class="px-5 py-2.5 btn-primary text-white rounded-xl text-sm font-semibold inline-block">Open / Download PDF</a>
+        </div>`;
+        toast('PDF preview failed: ' + (err?.message || err), 'err');
+      }
+
+      async function renderPdfViewer(post, container) {
+        teardownPdfViewer();
+        const st = pdfView, token = st.token, url = post.file_url;
+        st.zoomIdx = 1;
+        container.innerHTML = `
+          <div class="w-full flex flex-col" style="height:75vh">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 shrink-0 header-bg" style="border-bottom:1px solid rgba(139,92,246,0.15)">
+              <span id="pdfPageLabel" class="text-[11px] font-bold tracking-wide px-3 py-1.5 rounded-full" style="color:#c4b5fd;background:linear-gradient(135deg,rgba(124,58,237,0.35),rgba(34,211,238,0.15));border:1px solid rgba(139,92,246,0.35)">Loading…</span>
+              <div class="flex items-center gap-1.5">
+                <button id="pdfZoomOut" class="pdf-tool" onclick="pdfZoom(-1)" aria-label="Zoom out"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                <span id="pdfZoomLabel" class="text-[11px] font-semibold text-violet-300/70 w-10 text-center">100%</span>
+                <button id="pdfZoomIn" class="pdf-tool" onclick="pdfZoom(1)" aria-label="Zoom in"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                <a href="${esc(url)}" target="_blank" download class="pdf-tool" aria-label="Download"><i data-lucide="download" class="w-4 h-4"></i></a>
+              </div>
+            </div>
+            <div id="pdfScroller" class="flex-1 min-h-0 overflow-auto scrollbar-thin" style="background:rgba(4,2,12,0.55);-webkit-overflow-scrolling:touch">
+              <div id="pdfStage" class="py-3"><div class="flex justify-center py-16"><div class="spinner" style="width:32px;height:32px;border-width:3px;"></div></div></div>
+            </div>
+          </div>`;
+        refreshIcons();
+        try {
+          const lib = await loadPdfJs();
+          if (st.token !== token) return;
+          st.task = lib.getDocument({ url });
+          const doc = await st.task.promise;
+          if (st.token !== token) { doc.destroy(); return; }
+          st.doc = doc;
+          const first = await doc.getPage(1);
+          if (st.token !== token) return;
+          const vp = first.getViewport({ scale: 1 });
+          st.aspect = vp.height / vp.width;
+          st.scroller = el('pdfScroller');
+          st.scroller.addEventListener('scroll', pdfOnScroll, { passive: true });
+          layoutPdfPages(token);
+        } catch (err) {
+          if (st.token !== token) return;
+          console.log('pdf render failed', err);
+          pdfFallback(container, url, err);
+        }
+      }
+
+      function pdfCssWidth() {
+        const avail = Math.max(240, pdfView.scroller.clientWidth - 24);
+        return Math.round(Math.min(avail, 900) * PDF_ZOOMS[pdfView.zoomIdx]);
+      }
+
+      // Builds one placeholder per page; the real canvas is only drawn while a
+      // page is near the screen and freed again afterwards (keeps phones happy).
+      function layoutPdfPages(token) {
+        const st = pdfView, sc = st.scroller, stage = el('pdfStage');
+        if (!sc || !stage || st.token !== token) return;
+        const ratio = sc.scrollHeight > sc.clientHeight ? sc.scrollTop / sc.scrollHeight : 0;
+        st.observer?.disconnect();
+        st.wraps.forEach(w => { try { w._task?.cancel(); } catch(e){} });
+        st.queue = Promise.resolve();
+        st.cssWidth = pdfCssWidth();
+        st.lastW = sc.clientWidth;
+        const h = Math.round(st.cssWidth * st.aspect);
+        stage.style.width = Math.max(sc.clientWidth, st.cssWidth + 24) + 'px';
+        stage.innerHTML = '';
+        st.wraps = [];
+        for (let n = 1; n <= st.doc.numPages; n++) {
+          const w = document.createElement('div');
+          w.className = 'pdf-page';
+          w.dataset.page = n; w.dataset.state = 'idle';
+          w.style.width = st.cssWidth + 'px'; w.style.height = h + 'px';
+          w.innerHTML = '<div class="w-full h-full flex items-center justify-center"><div class="spinner"></div></div>';
+          stage.appendChild(w); st.wraps.push(w);
+        }
+        st.observer = new IntersectionObserver(entries => {
+          entries.forEach(en => {
+            const w = en.target;
+            w._vis = en.isIntersecting;
+            if (en.isIntersecting) queuePdfPage(w, token); else releasePdfPage(w);
+          });
+        }, { root: sc, rootMargin: '700px 0px' });
+        st.wraps.forEach(w => st.observer.observe(w));
+        sc.scrollTop = ratio * sc.scrollHeight;
+        pdfUpdateLabels();
+      }
+
+      function queuePdfPage(w, token) {
+        if (w.dataset.state !== 'idle') return;
+        w.dataset.state = 'queued';
+        pdfView.queue = pdfView.queue.then(() => renderPdfPage(w, token)).catch(() => {});
+      }
+
+      function releasePdfPage(w) {
+        try { w._task?.cancel(); } catch(e){}
+        if (w.dataset.state === 'done') {
+          const c = w.querySelector('canvas'); if (c) { c.width = 0; c.height = 0; }
+          w.innerHTML = '<div class="w-full h-full flex items-center justify-center"><div class="spinner"></div></div>';
+        }
+        w.dataset.state = 'idle';
+      }
+
+      async function renderPdfPage(w, token) {
+        const st = pdfView;
+        if (st.token !== token || !w.isConnected) return;
+        if (!w._vis) { w.dataset.state = 'idle'; return; }
+        w.dataset.state = 'busy';
+        try {
+          const page = await st.doc.getPage(+w.dataset.page);
+          if (st.token !== token) return;
+          const base = page.getViewport({ scale: 1 });
+          const cssW = st.cssWidth, cssH = Math.round(cssW * base.height / base.width);
+          let k = (cssW / base.width) * Math.min(window.devicePixelRatio || 1, 2);
+          if (base.width * k > 4096) k = 4096 / base.width;
+          const vp = page.getViewport({ scale: k });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
+          canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const task = page.render({ canvasContext: ctx, viewport: vp });
+          w._task = task;
+          await task.promise;
+          if (st.token !== token) return;
+          w.style.height = cssH + 'px';
+          w.replaceChildren(canvas);
+          w.dataset.state = 'done';
+        } catch (e) {
+          if (e && e.name === 'RenderingCancelledException') { w.dataset.state = 'idle'; return; }
+          if (st.token !== token) return;
+          console.log('pdf page failed', e);
+          w.dataset.state = 'idle';
+          w.innerHTML = '<p class="w-full h-full flex items-center justify-center text-xs text-slate-500">Page failed to render</p>';
+        }
+      }
+
+      let pdfScrollRaf = 0;
+      function pdfOnScroll() {
+        if (pdfScrollRaf) return;
+        pdfScrollRaf = requestAnimationFrame(() => { pdfScrollRaf = 0; pdfUpdateLabels(); });
+      }
+      function pdfUpdateLabels() {
+        const st = pdfView, sc = st.scroller;
+        if (!sc || !st.doc) return;
+        const mid = sc.getBoundingClientRect().top + sc.clientHeight / 3;
+        let cur = 1;
+        for (const w of st.wraps) { if (w.getBoundingClientRect().top <= mid) cur = +w.dataset.page; else break; }
+        const lbl = el('pdfPageLabel'); if (lbl) lbl.textContent = `Page ${cur} / ${st.doc.numPages}`;
+        const z = el('pdfZoomLabel'); if (z) z.textContent = Math.round(PDF_ZOOMS[st.zoomIdx] * 100) + '%';
+        el('pdfZoomOut')?.toggleAttribute('disabled', st.zoomIdx === 0);
+        el('pdfZoomIn')?.toggleAttribute('disabled', st.zoomIdx === PDF_ZOOMS.length - 1);
+      }
+      function pdfZoom(d) {
+        const st = pdfView;
+        if (!st.doc) return;
+        const i = Math.min(PDF_ZOOMS.length - 1, Math.max(0, st.zoomIdx + d));
+        if (i === st.zoomIdx) return;
+        st.zoomIdx = i;
+        layoutPdfPages(st.token);
+      }
+      // Rotating the phone changes the width: re-fit the pages (height-only
+      // resizes from the browser bar are ignored).
+      let pdfResizeTimer = 0;
+      window.addEventListener('resize', () => {
+        clearTimeout(pdfResizeTimer);
+        pdfResizeTimer = setTimeout(() => {
+          const st = pdfView;
+          if (st.doc && st.scroller?.isConnected && st.scroller.clientWidth !== st.lastW) layoutPdfPages(st.token);
+        }, 250);
+      });
+
+      /* ── PDF thumbnails on feed cards (first page, drawn lazily) ── */
+      const pdfThumbCache = new Map(), pdfThumbBusy = new Set(), pdfThumbFailed = new Set();
+      let pdfThumbQueue = Promise.resolve(), pdfThumbObserver = null;
+
+      function pdfThumbHtml(url) {
+        const cached = pdfThumbCache.get(url);
+        if (cached) return `<img src="${cached}" alt="PDF preview" class="w-full h-full object-cover object-top" style="background:#fff">`;
+        return `<div class="card-pdf-pending w-full h-full flex flex-col items-center justify-center gap-2" data-pdf-url="${esc(url)}" style="background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(34,211,238,0.06),rgba(14,8,28,0.85))">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.75)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span class="text-[10px] font-bold tracking-widest text-violet-300/60">PDF</span>
+        </div>`;
+      }
+
+      function hydratePdfThumbs() {
+        if (!('IntersectionObserver' in window)) return;
+        // the grid is rebuilt often, so drop observers of nodes that are gone
+        pdfThumbObserver?.disconnect();
+        const nodes = document.querySelectorAll('.card-pdf-pending');
+        if (!nodes.length) return;
+        if (!pdfThumbObserver) {
+          pdfThumbObserver = new IntersectionObserver(entries => {
+            entries.forEach(en => {
+              if (!en.isIntersecting) return;
+              pdfThumbObserver.unobserve(en.target);
+              queuePdfThumb(en.target.dataset.pdfUrl);
+            });
+          }, { rootMargin: '200px' });
+        }
+        nodes.forEach(n => pdfThumbObserver.observe(n));
+      }
+
+      function queuePdfThumb(url) {
+        if (!url || pdfThumbCache.has(url) || pdfThumbBusy.has(url) || pdfThumbFailed.has(url)) return;
+        pdfThumbBusy.add(url);
+        pdfThumbQueue = pdfThumbQueue
+          .then(() => new Promise(r => ('requestIdleCallback' in window) ? requestIdleCallback(() => r(), { timeout: 1500 }) : setTimeout(r, 300)))
+          .then(() => makePdfThumb(url))
+          .catch(e => { pdfThumbFailed.add(url); console.log('pdf thumb failed', e); })
+          .finally(() => pdfThumbBusy.delete(url));
+      }
+
+      async function makePdfThumb(url) {
+        const lib = await loadPdfJs();
+        const task = lib.getDocument({ url, disableAutoFetch: true });
+        const doc = await task.promise;
+        try {
+          const page = await doc.getPage(1);
+          const base = page.getViewport({ scale: 1 });
+          const vp = page.getViewport({ scale: 560 / base.width });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          pdfThumbCache.set(url, dataUrl);
+          document.querySelectorAll('.card-pdf-pending').forEach(n => {
+            if (n.dataset.pdfUrl !== url) return;
+            const img = document.createElement('img');
+            img.src = dataUrl; img.alt = 'PDF preview';
+            img.className = 'w-full h-full object-cover object-top'; img.style.background = '#fff';
+            n.replaceWith(img);
+          });
+        } finally { try { doc.destroy(); } catch(e){} }
+      }
 
       function openUpload()  { if (!currentUser) { openFostHubAuth(); return; } showOverlay('uploadOverlay'); }
       function closeUpload() { hideOverlay('uploadOverlay'); resetUploadForm(); }
@@ -1324,6 +1617,7 @@
         const anyOpen = overlays.some(id => !el(id)?.classList.contains('hidden'));
         if (anyOpen) {
           overlays.forEach(id => hideOverlay(id));
+          teardownPdfViewer();
           el('viewerContent').innerHTML = '';
           return;
         }
