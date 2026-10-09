@@ -807,7 +807,10 @@
       const BUCKET = 'homework-files';
       const TABLE  = 'homework';
       const THEME_KEY   = 'xcluice_theme';
-      const ADMIN_EMAIL = 'momin@xcluice.io';
+      // Supabase Auth runs a DNS check on every signup email, so the internal
+      // address needs a domain that really has MX records. No mail is ever sent.
+      const AUTH_DOMAIN = 'mailinator.com';
+      const ADMIN_EMAIL = 'momin@' + AUTH_DOMAIN;
 
       let allPosts = [], activeFilter = 'all', searchQuery = '', selectedFile = null;
       let supabase = null, supabaseReadyPromise = null;
@@ -951,10 +954,10 @@
         const rawUser = el('authUsername').value.trim().toLowerCase();
         const pass = el('authPassword').value;
         if (!rawUser || !pass) { toast('Fields cannot be empty', 'err'); return; }
-        const cleanUser = rawUser.replace(/@xcluice\.io$/, '').replace(/@fosthub\.com$/, '').replace(/[^a-z0-9_.]/g, '');
+        const cleanUser = rawUser.replace(/@xcluice\.io$/, '').replace(/@mailinator\.com$/, '').replace(/@fosthub\.com$/, '').replace(/[^a-z0-9_.]/g, '');
         if (cleanUser.length < 3) { toast('Username min 3 characters', 'err'); return; }
         if (pass.length < 6) { toast('Password min 6 characters', 'err'); return; }
-        const emailStr = `${cleanUser}@xcluice.io`;
+        const emailStr = `${cleanUser}@${AUTH_DOMAIN}`;
         const btn = el('authSubmitBtn');
         btn.disabled = true; btn.textContent = 'Processing…';
         try {
