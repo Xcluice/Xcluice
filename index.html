@@ -1576,6 +1576,13 @@
         el('dropzone').querySelector('.dz-label').textContent = '✓ ' + file.name;
       }
 
+      // Turns a failed Supabase response into an Error that says what went wrong.
+      async function sbError(r, what) {
+        let m = '';
+        try { const j = await r.json(); m = j.message || j.error || ''; } catch {}
+        return new Error(`${what} (${r.status})${m ? ': ' + m : ''}`);
+      }
+
       async function publishPost() {
         const title = el('inputTitle').value.trim(), desc = el('inputDesc').value.trim();
         if (!title && !desc && !selectedFile) return;
@@ -1588,15 +1595,17 @@
             const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
               method:'POST', headers: authHeaders({'Content-Type':selectedFile.type}), body:selectedFile
             });
-            if (!r.ok) throw new Error();
+            if (!r.ok) throw await sbError(r, 'Upload failed');
             fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
           }
-          await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
+          // file_url is NOT NULL in the table, so text-only posts send '' (still falsy in the UI)
+          const ins = await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
             method:'POST', headers: authHeaders({'Content-Type':'application/json'}),
-            body: JSON.stringify({ title:title||selectedFile?.name||'Post', subject:desc||title, file_url:fileUrl, author_name:currentUser.display_name, author_email:currentUser.email, author_photo:currentUser.avatar_url })
+            body: JSON.stringify({ title:title||selectedFile?.name||'Post', subject:desc||title, file_url:fileUrl || '', author_name:currentUser.display_name, author_email:currentUser.email, author_photo:currentUser.avatar_url })
           });
+          if (!ins.ok) throw await sbError(ins, 'Save failed');
           toast('Published successfully', 'ok'); closeUpload(); loadPosts();
-        } catch { toast('Publish failed', 'err'); }
+        } catch (e) { console.log(e); toast('Publish failed: ' + (e?.message || 'unknown error'), 'err'); }
         finally { btn.disabled = false; btn.textContent = 'Publish'; }
       }
 
