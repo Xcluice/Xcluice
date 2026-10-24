@@ -80,6 +80,12 @@
       const box = document.getElementById(id);
       if (!box) return;
       box.querySelectorAll('p.leading-relaxed').forEach((p) => { p.innerHTML = linkify(p.textContent); });
+      // tag each bubble with its message id (same order/filter as the original render)
+      const vis = chatMessages.filter((m) => {
+        if (!currentThread) return !m.to_uid;
+        return (m.uid === chatUserId && m.to_uid === currentThread.uid) || (m.uid === currentThread.uid && m.to_uid === chatUserId);
+      });
+      box.querySelectorAll('.chat-bubble').forEach((b, i) => { if (vis[i]) b.dataset.mid = vis[i].id; });
       box.scrollTop = box.scrollHeight;
     });
   };
@@ -156,4 +162,98 @@
     } catch (e) { console.log(e); toast('Publish failed: ' + (e?.message || 'unknown error'), 'err'); }
     finally { btn.disabled = false; btn.textContent = 'Publish'; }
   };
+
+  /* ── Long-press (or right-click) a message: Copy / Delete ── */
+  const msgCss = document.createElement('style');
+  msgCss.textContent = '#chatMessages .chat-bubble,#chatMessagesMobile .chat-bubble,#chatMessages .chat-bubble *,#chatMessagesMobile .chat-bubble *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}';
+  document.head.appendChild(msgCss);
+
+  let msgMenu = null, pressTimer = null, pressStart = null, suppressClick = false;
+  const closeMsgMenu = () => { if (msgMenu) { msgMenu.remove(); msgMenu = null; } };
+
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = t; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e2) {}
+      ta.remove();
+    }
+    toast('Copied', 'ok');
+  }
+
+  async function deleteMessage(m) {
+    if (!confirm('Delete this message?')) return;
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/chat_messages?id=eq.${m.id}`, {
+        method: 'DELETE', headers: authHeaders({ Prefer: 'return=representation' })
+      });
+      const rows = r.ok ? await r.json() : [];
+      if (!rows.length) throw new Error('not deleted');
+      const i = chatMessages.findIndex((v) => String(v.id) === String(m.id));
+      if (i > -1) chatMessages.splice(i, 1);
+      renderChatMessages();
+      toast('Message deleted', 'ok');
+    } catch (e) { toast('Could not delete message', 'err'); }
+  }
+
+  function showMsgMenu(bubble, x, y) {
+    const m = chatMessages.find((v) => String(v.id) === String(bubble.dataset.mid));
+    if (!m) return;
+    closeMsgMenu();
+    const isAudio = (m.text || '').startsWith('[AUDIO::');
+    const mine = m.uid === chatUserId && !String(m.id).startsWith('temp');
+    msgMenu = document.createElement('div');
+    msgMenu.className = 'x-dropdown rounded-xl overflow-hidden';
+    msgMenu.style.cssText = 'position:fixed;z-index:10000;min-width:160px;left:0;top:0;visibility:hidden';
+    msgMenu.innerHTML =
+      '<button data-act="copy" class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> Copy</button>' +
+      (mine ? '<button data-act="delete" class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>' : '');
+    document.body.appendChild(msgMenu);
+    refreshIcons();
+    const r = msgMenu.getBoundingClientRect();
+    const left = Math.max(8, Math.min(x - r.width / 2, window.innerWidth - r.width - 8));
+    let top = y - r.height - 12;
+    if (top < 8) top = Math.min(y + 12, window.innerHeight - r.height - 8);
+    msgMenu.style.left = left + 'px';
+    msgMenu.style.top = top + 'px';
+    msgMenu.style.visibility = 'visible';
+    msgMenu.addEventListener('click', (ev) => {
+      const act = ev.target.closest('button')?.dataset.act;
+      if (!act) return;
+      closeMsgMenu();
+      if (act === 'copy') copyText(isAudio ? m.text.replace('[AUDIO::', '').replace(']', '') : m.text);
+      if (act === 'delete') deleteMessage(m);
+    });
+  }
+
+  ['chatMessages', 'chatMessagesMobile'].forEach((id) => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('.chat-bubble');
+      if (!b || e.button > 0) return;
+      pressStart = { x: e.clientX, y: e.clientY };
+      clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        suppressClick = true;
+        showMsgMenu(b, pressStart.x, pressStart.y);
+        setTimeout(() => { suppressClick = false; }, 600);
+      }, 500);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach((t) => box.addEventListener(t, () => clearTimeout(pressTimer), { passive: true }));
+    box.addEventListener('pointermove', (e) => {
+      if (pressStart && Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 10) clearTimeout(pressTimer);
+    }, { passive: true });
+    box.addEventListener('contextmenu', (e) => {
+      const b = e.target.closest('.chat-bubble');
+      if (!b) return;
+      e.preventDefault();
+      showMsgMenu(b, e.clientX, e.clientY);
+    });
+    box.addEventListener('click', (e) => { if (suppressClick) { e.preventDefault(); e.stopPropagation(); } }, true);
+  });
+  document.addEventListener('pointerdown', (e) => { if (msgMenu && !msgMenu.contains(e.target)) closeMsgMenu(); }, true);
+  window.addEventListener('resize', closeMsgMenu);
 })();
