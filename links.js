@@ -2,6 +2,7 @@
    Loaded AFTER the main script in index.html (just before </body>). */
 (function () {
   const isLinkUrl = (u) => !!u && /^https?:\/\//i.test(u) && !u.startsWith(SB_URL + '/storage/');
+  const postLink = (p) => (p && (p.link_url || (isLinkUrl(p.file_url) ? p.file_url : null))) || null;
   const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
 
   function normalizeLink(raw) {
@@ -35,7 +36,10 @@
   const _cardHTML = cardHTML;
   window.cardHTML = (p) => {
     let h = _cardHTML(p);
-    if (isLinkUrl(p.file_url)) {
+    if (p.link_url) {
+      const chip = '<span class="absolute bottom-2 left-2 max-w-[60%] truncate text-[10px] font-semibold rounded-full px-2 py-0.5 text-cyan-200 border border-cyan-500/30" style="background:rgba(4,2,12,0.7);backdrop-filter:blur(8px)">🔗 ' + esc(host(p.link_url)) + '</span>';
+      h = h.replace('<span class="absolute bottom-2 right-2', chip + '<span class="absolute bottom-2 right-2').replace('>Preview</span>', '>Link</span>');
+    } else if (isLinkUrl(p.file_url)) {
       const thumb = '<div class="w-full h-full flex flex-col items-center justify-center gap-2 px-4" style="background:linear-gradient(135deg,rgba(34,211,238,0.12),rgba(14,8,28,0.85))">' +
         '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(103,232,249,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' +
         '<span class="text-xs text-cyan-300/80 font-semibold max-w-full truncate">' + esc(host(p.file_url)) + '</span></div>';
@@ -48,7 +52,8 @@
   const _openViewer = openViewer;
   window.openViewer = (id) => {
     const p = allPosts.find((x) => String(x.id) === String(id));
-    if (p && isLinkUrl(p.file_url)) { window.open(p.file_url, '_blank', 'noopener,noreferrer'); return; }
+    const lk = postLink(p);
+    if (lk) { window.open(lk, '_blank', 'noopener,noreferrer'); return; }
     _openViewer(id);
     if (p && !p.file_url) {
       const box = document.querySelector('#viewerContent .whitespace-pre-wrap');
@@ -61,9 +66,10 @@
   window.openPostMenu = (e, id) => {
     _openPostMenu(e, id);
     const p = allPosts.find((x) => String(x.id) === String(id));
-    if (p && isLinkUrl(p.file_url)) {
+    if (postLink(p)) {
       const a = document.querySelector('#postMenu a[download]');
       if (a) {
+        a.href = postLink(p);
         a.removeAttribute('download');
         a.rel = 'noopener noreferrer';
         a.innerHTML = '<i data-lucide="external-link" class="w-4 h-4"></i> Open link';
@@ -128,6 +134,22 @@
     if (s) s.textContent = 'Add link';
   };
 
+  // Asks the link-screenshot function to capture the site and store it in Supabase.
+  async function captureScreenshot(link) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 30000);
+      const r = await fetch(`${SB_URL}/functions/v1/link-screenshot`, {
+        method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ url: link }), signal: ctrl.signal
+      });
+      clearTimeout(t);
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j.file_url || null;
+    } catch (e) { return null; }
+  }
+
   window.publishPost = async function () {
     const title = el('inputTitle').value.trim(), desc = el('inputDesc').value.trim();
     const rawLink = (el('inputLink')?.value || '').trim();
@@ -137,7 +159,13 @@
     if (!title && !desc && !selectedFile && !link) return;
     const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Publishing…';
     try {
-      let fileUrl = link;
+      let fileUrl = link, linkUrl = null;
+      if (link) {
+        linkUrl = link;
+        btn.textContent = 'Capturing preview…';
+        const shot = await captureScreenshot(link);
+        if (shot) fileUrl = shot; else toast('Couldn’t capture a preview, posting the link only', 'err');
+      }
       if (selectedFile) {
         el('dzProgress').classList.remove('hidden');
         const safeName = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
@@ -154,6 +182,7 @@
           title: title || selectedFile?.name || fallbackTitle || 'Post',
           subject: desc || title || fallbackTitle,
           file_url: fileUrl || '',
+          link_url: linkUrl,
           author_name: currentUser.display_name, author_email: currentUser.email, author_photo: currentUser.avatar_url
         })
       });
