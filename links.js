@@ -256,4 +256,17 @@
   });
   document.addEventListener('pointerdown', (e) => { if (msgMenu && !msgMenu.contains(e.target)) closeMsgMenu(); }, true);
   window.addEventListener('resize', closeMsgMenu);
+
+  /* ── Delete post: only say "deleted" if a row was really removed ── */
+  window.deletePost = async function (id) {
+    closePostMenu();
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+        method: 'DELETE', headers: authHeaders({ Prefer: 'return=representation' })
+      });
+      const rows = r.ok ? await r.json() : [];
+      if (!rows.length) throw new Error('not deleted');
+      toast('Post deleted', 'ok'); loadPosts();
+    } catch (e) { toast('Delete failed: not allowed or already removed', 'err'); }
+  };
 })();
