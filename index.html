@@ -1808,8 +1808,11 @@
       }
       async function fetchActiveUsers() {
         try {
-          const r = await fetch(`${SB_URL}/rest/v1/chat_users?order=last_active.desc`, { headers:{ apikey:SB_KEY } });
-          chatUsers = await r.json(); renderChatUsers();
+          if (!currentSession?.access_token) return; // chat_users is readable by signed-in users only
+          const r = await fetch(`${SB_URL}/rest/v1/chat_users?order=last_active.desc`, { headers: authHeaders() });
+          const data = await r.json();
+          if (!Array.isArray(data)) return;
+          chatUsers = data; renderChatUsers();
         } catch {}
       }
       async function subscribeToActiveUsers() {
@@ -1969,9 +1972,10 @@
 
       async function initChat() {
         if (chatInitialized) return; chatInitialized = true;
-        await fetchMessages(); await registerPresence();
+        await fetchMessages(); await registerPresence(); await fetchActiveUsers();
         chatPollInterval = setInterval(fetchMessages, 4000);
         presenceHeartbeat = setInterval(registerPresence, 25000);
+        setInterval(fetchActiveUsers, 15000);
       }
 
       async function registerPresence() {
