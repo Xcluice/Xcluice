@@ -394,4 +394,33 @@
       toast('Post deleted', 'ok'); loadPosts();
     } catch (e) { toast('Delete failed: not allowed or already removed', 'err'); }
   };
+
+  /* ── Motion: tap feedback + animated close for panels ── */
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('button, a.nav-item, .cat-pill, .bnav-item, [role="button"]');
+    if (!t || t.disabled || t.closest('.snap-row')) return;
+    t.classList.remove('x-tap');
+    void t.offsetWidth;
+    t.classList.add('x-tap');
+    setTimeout(() => t.classList.remove('x-tap'), 450);
+  }, true);
+
+  const closeTimers = {};
+  const _showOverlay = showOverlay, _hideOverlay = hideOverlay;
+  window.showOverlay = (id) => {
+    const o = document.getElementById(id);
+    clearTimeout(closeTimers[id]); delete closeTimers[id];
+    if (o) o.classList.remove('x-closing');
+    _showOverlay(id);
+  };
+  window.hideOverlay = (id) => {
+    const o = document.getElementById(id);
+    if (!o || o.classList.contains('hidden') || closeTimers[id]) return;
+    o.classList.add('x-closing');
+    closeTimers[id] = setTimeout(() => {
+      delete closeTimers[id];
+      o.classList.remove('x-closing');
+      _hideOverlay(id);
+    }, 180);
+  };
 })();
