@@ -79,3 +79,15 @@ button:not(:disabled):active, .nav-item:active, .cat-pill:active, .bnav-item:act
 /* Menus, dropdowns, toasts */
 .x-dropdown { animation:xPop .2s cubic-bezier(.16,1,.3,1) both; transform-origin:top right; }
 #toastWrap > * { animation:xPanelIn .3s cubic-bezier(.16,1,.3,1) both; }
+
+/* ═══ Chat thread transitions ═══ */
+@keyframes xSlideIn   { from { transform:translateX(100%) } to { transform:none } }
+@keyframes xSlideOut  { to   { transform:translateX(100%) } }
+@keyframes xThreadIn  { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
+@keyframes xThreadSw  { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
+#chatThreadMobile { background:#000 !important; }
+#chatThreadPane   { background:#000 !important; }
+#chatThreadMobile:not(.hidden) { animation:xSlideIn .34s cubic-bezier(.16,1,.3,1) both; box-shadow:-16px 0 40px rgba(0,0,0,.6); }
+#chatThreadMobile.x-leaving    { animation:xSlideOut .24s cubic-bezier(.4,0,1,1) both !important; }
+#chatThreadView:not(.hidden)   { animation:xThreadIn .3s cubic-bezier(.16,1,.3,1) both; }
+#chatThreadView.x-switch       { animation:xThreadSw .3s cubic-bezier(.16,1,.3,1) both !important; }

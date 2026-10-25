@@ -423,4 +423,22 @@
       _hideOverlay(id);
     }, 180);
   };
+
+  /* ── Chat thread: slide in on open, slide out on back ── */
+  const _openDM = openDM, _closeThread = closeThread;
+  window.openDM = function (person) {
+    const v = document.getElementById('chatThreadView');
+    const wasOpen = v && !v.classList.contains('hidden');
+    _openDM(person);
+    if (v && wasOpen) { v.classList.remove('x-switch'); void v.offsetWidth; v.classList.add('x-switch'); }
+  };
+  let leaving = false;
+  window.closeThread = function () {
+    const m = document.getElementById('chatThreadMobile');
+    if (leaving) return;
+    if (!m || m.classList.contains('hidden') || getComputedStyle(m).display === 'none') return _closeThread();
+    leaving = true;
+    m.classList.add('x-leaving');
+    setTimeout(() => { m.classList.remove('x-leaving'); leaving = false; _closeThread(); }, 240);
+  };
 })();
