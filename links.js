@@ -424,21 +424,54 @@
     }, 180);
   };
 
-  /* ── Chat thread: slide in on open, slide out on back ── */
+  /* ── Chat thread: animations + shareable link  #people/thread-<name> ── */
+  const slug = (n) => String(n || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const THREAD_RE = /^#people\/thread-([a-z0-9-]+)$/;
   const _openDM = openDM, _closeThread = closeThread;
+
   window.openDM = function (person) {
     const v = document.getElementById('chatThreadView');
     const wasOpen = v && !v.classList.contains('hidden');
     _openDM(person);
     if (v && wasOpen) { v.classList.remove('x-switch'); void v.offsetWidth; v.classList.add('x-switch'); }
+    const target = '#people/thread-' + slug(person.name);
+    if (slug(person.name) && location.hash !== target) history.pushState({ filter: 'people', thread: true }, '', target);
   };
+
   let leaving = false;
   window.closeThread = function () {
-    const m = document.getElementById('chatThreadMobile');
     if (leaving) return;
-    if (!m || m.classList.contains('hidden') || getComputedStyle(m).display === 'none') return _closeThread();
+    // In-app back arrow: step back in history; the browser's popstate then closes the thread
+    if (history.state && history.state.thread) { history.back(); return; }
+    const m = document.getElementById('chatThreadMobile');
+    const finish = () => {
+      _closeThread();
+      if (THREAD_RE.test(location.hash)) history.replaceState({ filter: 'people' }, '', '#people');
+    };
+    if (!m || m.classList.contains('hidden') || getComputedStyle(m).display === 'none') return finish();
     leaving = true;
     m.classList.add('x-leaving');
-    setTimeout(() => { m.classList.remove('x-leaving'); leaving = false; _closeThread(); }, 240);
+    setTimeout(() => { m.classList.remove('x-leaving'); leaving = false; finish(); }, 240);
   };
+
+  // Opening a shared link: wait for login + contact list, then open that thread
+  let linkTimer = null;
+  function openThreadFromHash() {
+    const m = THREAD_RE.exec(location.hash);
+    if (!m) return;
+    clearInterval(linkTimer);
+    let tries = 0;
+    linkTimer = setInterval(() => {
+      if (++tries > 60 || !THREAD_RE.test(location.hash)) { clearInterval(linkTimer); return; }
+      if (!currentUser || !chatUsers || !chatUsers.length) return;
+      clearInterval(linkTimer);
+      const u = chatUsers.find((x) => slug(x.name) === m[1] && x.uid !== chatUserId);
+      if (!u) { toast('Couldn’t find that person', 'err'); history.replaceState({ filter: 'people' }, '', '#people'); return; }
+      if (currentThread && currentThread.uid === u.uid) return;
+      history.replaceState({ filter: 'people' }, '', '#people');   // keep a clean base entry for the back button
+      openDM({ uid: u.uid, name: u.name, email: u.email, photo: u.photo });
+    }, 500);
+  }
+  window.addEventListener('hashchange', () => { if (!currentThread) openThreadFromHash(); });
+  openThreadFromHash();
 })();

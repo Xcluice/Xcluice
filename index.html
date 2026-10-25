@@ -905,8 +905,9 @@
         loadSupabaseSdk().then(() => restoreSupabaseSession());
 
         // Seed base history entry so back never leaves the app
-        const hashFilter = location.hash.replace('#', '') || 'all';
-        history.replaceState({ filter: hashFilter }, '', '#' + hashFilter);
+        const rawHash = location.hash.replace('#', '') || 'all';
+        const hashFilter = rawHash.split('/')[0] || 'all';   // "people/thread-momin" -> "people"
+        history.replaceState({ filter: hashFilter }, '', '#' + rawHash);
         if (hashFilter !== 'all') setFilter(hashFilter, false);
 
         document.addEventListener('click', e => {
