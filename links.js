@@ -1,7 +1,7 @@
 /* Xcluice: "Add link" on posts + clickable links in chat.
    Loaded AFTER the main script in index.html (just before </body>). */
 (function () {
-  let selectedThumb = null;
+  let selectedThumb = null, existingThumb = null, editingPost = null;
   const isLinkUrl = (u) => !!u && /^https?:\/\//i.test(u) && !u.startsWith(SB_URL + '/storage/');
   const postLink = (p) => (p && (p.link_url || (isLinkUrl(p.file_url) ? p.file_url : null))) || null;
   const isShotPost = (p) => !!p.link_url && /\/link_\d+_/.test(p.file_url || '');
@@ -85,6 +85,11 @@
   window.openPostMenu = (e, id) => {
     _openPostMenu(e, id);
     const p = allPosts.find((x) => String(x.id) === String(id));
+    if (p && canEdit(p)) {
+      document.getElementById('postMenu').insertAdjacentHTML('afterbegin',
+        '<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors" onclick="openEdit(\'' + p.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i> Edit</button>');
+      refreshIcons();
+    }
     if (p && linkOnly(p)) {
       const a = document.querySelector('#postMenu a[download]');
       if (a) {
@@ -154,7 +159,7 @@
       '<input type="file" id="thumbInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">';
     input.insertAdjacentElement('afterend', row2);
     document.getElementById('thumbBtn').addEventListener('click', () => {
-      if (selectedThumb) setThumb(null); else document.getElementById('thumbInput').click();
+      if (selectedThumb || existingThumb) { existingThumb = null; setThumb(null); } else document.getElementById('thumbInput').click();
     });
     document.getElementById('thumbInput').addEventListener('change', (e) => {
       const f = e.target.files[0];
@@ -162,6 +167,7 @@
       if (!f) return;
       if (!/^image\/(png|jpe?g|webp|gif)$/.test(f.type)) { toast('Thumbnail must be an image', 'err'); return; }
       if (f.size > 5 * 1024 * 1024) { toast('Thumbnail max size is 5MB', 'err'); return; }
+      existingThumb = null;
       setThumb(f);
     });
     refreshIcons();
@@ -199,6 +205,7 @@
   window.resetUploadForm = function () {
     _resetUploadForm();
     setThumb(null);
+    exitEditMode();
     document.getElementById('thumbRow')?.classList.add('hidden');
     const i = document.getElementById('inputLink');
     if (i) { i.value = ''; i.classList.add('hidden'); }
@@ -232,6 +239,7 @@
   }
 
   window.publishPost = async function () {
+    if (editingPost) return saveEdit();
     const title = el('inputTitle').value.trim(), desc = el('inputDesc').value.trim();
     const rawLink = (el('inputLink')?.value || '').trim();
     const link = rawLink ? normalizeLink(rawLink) : null;
@@ -270,8 +278,109 @@
       if (!ins.ok) throw await sbError(ins, 'Save failed');
       toast('Published successfully', 'ok'); closeUpload(); loadPosts();
     } catch (e) { console.log(e); toast('Publish failed: ' + (e?.message || 'unknown error'), 'err'); }
-    finally { btn.disabled = false; btn.textContent = 'Publish'; }
+    finally { btn.disabled = false; btn.textContent = editingPost ? 'Save changes' : 'Publish'; }
   };
+
+  /* ── Edit post (owner or admin) ── */
+  const canEdit = (p) => !!currentUser && (currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin' || (p.author_email && currentUser.email === p.author_email));
+  const oldLinkOf = (p) => p.link_url || (isLinkUrl(p.file_url) ? p.file_url : null);
+  const hasRealFile = (p) => !!p.file_url && !isShotPost(p) && !isLinkUrl(p.file_url);
+
+  function attachLabel() { const b = document.getElementById('addLinkBtn'); return b ? b.parentNode.firstElementChild : null; }
+
+  function exitEditMode() {
+    editingPost = null; existingThumb = null;
+    document.getElementById('dropzone')?.classList.remove('hidden');
+    const lab = attachLabel();
+    if (lab && lab.dataset.orig) { lab.innerHTML = lab.dataset.orig; delete lab.dataset.orig; }
+    document.getElementById('addLinkBtn')?.classList.remove('hidden');
+    const h2 = document.querySelector('#uploadOverlay h2'); if (h2) h2.textContent = 'New Post';
+    const pb = document.getElementById('publishBtn'); if (pb) pb.textContent = 'Publish';
+  }
+
+  function openEdit(id) {
+    closePostMenu();
+    const p = allPosts.find((x) => String(x.id) === String(id));
+    if (!p || !canEdit(p)) return;
+    resetUploadForm();
+    editingPost = p;
+    el('inputTitle').value = p.title || '';
+    el('inputDesc').value = p.subject && p.subject !== p.title ? p.subject : '';
+    const li = document.getElementById('inputLink');
+    li.classList.remove('hidden');
+    li.value = oldLinkOf(p) || '';
+    document.getElementById('dropzone').classList.add('hidden');
+    const lab = attachLabel();
+    if (lab) { lab.dataset.orig = lab.innerHTML; lab.textContent = 'Link'; }
+    document.getElementById('addLinkBtn').classList.add('hidden');
+    if (hasRealFile(p) && !isImageName(p.file_url)) {
+      document.getElementById('thumbRow').classList.remove('hidden');
+      if (p.thumb_url) {
+        existingThumb = p.thumb_url;
+        const prev = document.getElementById('thumbPreview');
+        prev.innerHTML = '';
+        const im = document.createElement('img');
+        im.src = p.thumb_url; im.className = 'w-full h-full object-cover';
+        prev.appendChild(im);
+        document.getElementById('thumbName').textContent = 'Current thumbnail';
+        document.getElementById('thumbBtn').textContent = 'Remove';
+      }
+    }
+    document.querySelector('#uploadOverlay h2').textContent = 'Edit Post';
+    document.getElementById('publishBtn').textContent = 'Save changes';
+    showOverlay('uploadOverlay');
+  }
+  window.openEdit = openEdit;
+
+  async function saveEdit() {
+    const p = editingPost;
+    const title = el('inputTitle').value.trim(), desc = el('inputDesc').value.trim();
+    const rawLink = (el('inputLink').value || '').trim();
+    const link = rawLink ? normalizeLink(rawLink) : null;
+    if (rawLink && !link) { toast('That link doesn’t look right', 'err'); return; }
+    if (!title && !desc && !p.file_url && !link) { toast('Add a title or description', 'err'); return; }
+    const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const patch = {
+        title: title || p.title || 'Post',
+        subject: desc || title || (hasRealFile(p) ? '' : (p.subject || ''))
+      };
+      const fileLike = hasRealFile(p), canThumb = fileLike && !isImageName(p.file_url);
+      const linkChanged = (link || null) !== (oldLinkOf(p) || null);
+
+      let thumbFinal = null;
+      if (canThumb) {
+        if (selectedThumb) thumbFinal = await uploadToBucket(selectedThumb, 'thumb_');
+        else if (existingThumb && !(linkChanged && /\/link_\d+_/.test(existingThumb))) thumbFinal = existingThumb;
+      }
+
+      if (linkChanged) {
+        if (link) {
+          const needShot = !fileLike || (canThumb && !thumbFinal);
+          let shot = null;
+          if (needShot) { btn.textContent = 'Capturing preview…'; shot = await captureScreenshot(link); }
+          patch.link_url = link;
+          if (!fileLike) {
+            if (shot) patch.file_url = shot;
+            else { patch.file_url = link; patch.link_url = null; toast('Couldn’t capture a preview of the link', 'err'); }
+          } else if (canThumb && !thumbFinal && shot) thumbFinal = shot;
+        } else {
+          patch.link_url = null;
+          if (!fileLike && isLinkUrl(p.file_url)) patch.file_url = '';
+        }
+      }
+      if (canThumb) patch.thumb_url = thumbFinal;
+
+      const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${p.id}`, {
+        method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+        body: JSON.stringify(patch)
+      });
+      const rows = r.ok ? await r.json() : [];
+      if (!rows.length) throw new Error('not allowed');
+      toast('Post updated', 'ok'); closeUpload(); loadPosts();
+    } catch (e) { console.log(e); toast('Save failed: ' + (e?.message || 'unknown error'), 'err'); }
+    finally { btn.disabled = false; btn.textContent = editingPost ? 'Save changes' : 'Publish'; }
+  }
 
   /* ── Delete post: only say "deleted" if a row was really removed ── */
   window.deletePost = async function (id) {
