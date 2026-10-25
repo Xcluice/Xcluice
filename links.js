@@ -1,8 +1,12 @@
 /* Xcluice: "Add link" on posts + clickable links in chat.
    Loaded AFTER the main script in index.html (just before </body>). */
 (function () {
+  let selectedThumb = null;
   const isLinkUrl = (u) => !!u && /^https?:\/\//i.test(u) && !u.startsWith(SB_URL + '/storage/');
   const postLink = (p) => (p && (p.link_url || (isLinkUrl(p.file_url) ? p.file_url : null))) || null;
+  const isShotPost = (p) => !!p.link_url && /\/link_\d+_/.test(p.file_url || '');
+  const linkOnly = (p) => (p.link_url ? isShotPost(p) : isLinkUrl(p.file_url));
+  const isImageName = (n) => /\.(png|jpe?g|gif|webp|svg)$/i.test(n || '');
   const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
 
   function normalizeLink(raw) {
@@ -34,30 +38,45 @@
   badgeLabel.link = 'Link';
 
   const _cardHTML = cardHTML;
+  const THUMB_RE = /(<div class="w-full aspect-video[^>]*>)[\s\S]*?(<span class="absolute bottom-2)/;
   window.cardHTML = (p) => {
     let h = _cardHTML(p);
+    if (p.thumb_url) {
+      const img = '<img src="' + esc(p.thumb_url) + '" alt="" loading="lazy" class="w-full h-full object-cover">';
+      h = h.replace(THUMB_RE, (m, a, b) => a + img + b);
+    }
     if (p.link_url) {
-      const chip = '<span class="absolute bottom-2 left-2 max-w-[60%] truncate text-[10px] font-semibold rounded-full px-2 py-0.5 text-cyan-200 border border-cyan-500/30" style="background:rgba(4,2,12,0.7);backdrop-filter:blur(8px)">🔗 ' + esc(host(p.link_url)) + '</span>';
-      h = h.replace('<span class="absolute bottom-2 right-2', chip + '<span class="absolute bottom-2 right-2').replace('>Preview</span>', '>Link</span>');
+      const chip = '<a href="' + esc(p.link_url) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="absolute bottom-2 left-2 max-w-[60%] truncate text-[10px] font-semibold rounded-full px-2 py-0.5 text-cyan-200 border border-cyan-500/30" style="background:rgba(4,2,12,0.7);backdrop-filter:blur(8px)">🔗 ' + esc(host(p.link_url)) + '</a>';
+      h = h.replace('<span class="absolute bottom-2 right-2', chip + '<span class="absolute bottom-2 right-2');
+      if (isShotPost(p)) h = h.replace('>Preview</span>', '>Link</span>');
     } else if (isLinkUrl(p.file_url)) {
       const thumb = '<div class="w-full h-full flex flex-col items-center justify-center gap-2 px-4" style="background:linear-gradient(135deg,rgba(34,211,238,0.12),rgba(14,8,28,0.85))">' +
         '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(103,232,249,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' +
         '<span class="text-xs text-cyan-300/80 font-semibold max-w-full truncate">' + esc(host(p.file_url)) + '</span></div>';
-      h = h.replace(/(<div class="w-full aspect-video[^>]*>)[\s\S]*?(<span class="absolute bottom-2)/, (m, a, b) => a + thumb + b);
+      h = h.replace(THUMB_RE, (m, a, b) => a + thumb + b);
     }
     return h;
   };
 
-  // Tapping a link post opens the link straight away.
+  // Link-only posts open the link straight away. File posts open normally,
+  // with a link button in the header and their thumbnail on the download screen.
   const _openViewer = openViewer;
   window.openViewer = (id) => {
     const p = allPosts.find((x) => String(x.id) === String(id));
-    const lk = postLink(p);
-    if (lk) { window.open(lk, '_blank', 'noopener,noreferrer'); return; }
+    document.getElementById('viewerLinkBtn')?.remove();
+    if (p && linkOnly(p)) { window.open(postLink(p), '_blank', 'noopener,noreferrer'); return; }
     _openViewer(id);
-    if (p && !p.file_url) {
+    if (!p) return;
+    if (!p.file_url) {
       const box = document.querySelector('#viewerContent .whitespace-pre-wrap');
       if (box) box.innerHTML = linkify(p.subject || '');
+    } else if (p.thumb_url) {
+      const dl = document.querySelector('#viewerContent .p-12');
+      if (dl) dl.insertAdjacentHTML('afterbegin', '<img src="' + esc(p.thumb_url) + '" alt="" class="mx-auto mb-5 rounded-xl max-h-64 w-auto object-contain">');
+    }
+    if (p.link_url) {
+      document.getElementById('viewerDate').insertAdjacentHTML('afterend',
+        '<a id="viewerLinkBtn" href="' + esc(p.link_url) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-cyan-300 underline">🔗 Open link · ' + esc(host(p.link_url)) + '</a>');
     }
   };
 
@@ -66,7 +85,7 @@
   window.openPostMenu = (e, id) => {
     _openPostMenu(e, id);
     const p = allPosts.find((x) => String(x.id) === String(id));
-    if (postLink(p)) {
+    if (p && linkOnly(p)) {
       const a = document.querySelector('#postMenu a[download]');
       if (a) {
         a.href = postLink(p);
@@ -122,12 +141,65 @@
       if (show) input.focus(); else input.value = '';
       document.querySelector('#addLinkBtn span').textContent = show ? 'Remove link' : 'Add link';
     });
+    // Optional thumbnail picker, shown when the chosen file isn't an image
+    const row2 = document.createElement('div');
+    row2.id = 'thumbRow';
+    row2.className = 'hidden mt-3 flex items-center gap-3 rounded-xl p-3';
+    row2.style.cssText = 'border:1px solid rgba(139,92,246,0.25);background:rgba(139,92,246,0.04)';
+    row2.innerHTML =
+      '<div id="thumbPreview" class="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden shrink-0" style="background:rgba(139,92,246,0.12)"><i data-lucide="image" class="w-5 h-5 text-violet-400/60"></i></div>' +
+      '<div class="flex-1 min-w-0"><p class="text-xs font-semibold text-violet-300/80">Thumbnail <span class="font-normal text-violet-400/40">(optional)</span></p>' +
+      '<p id="thumbName" class="text-[11px] text-violet-400/40 truncate">Add a cover image for this file</p></div>' +
+      '<button type="button" id="thumbBtn" class="text-xs font-semibold text-violet-300 rounded-lg px-2.5 py-1.5 hover:bg-violet-900/30" style="border:1px solid rgba(139,92,246,0.25)">Choose</button>' +
+      '<input type="file" id="thumbInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">';
+    input.insertAdjacentElement('afterend', row2);
+    document.getElementById('thumbBtn').addEventListener('click', () => {
+      if (selectedThumb) setThumb(null); else document.getElementById('thumbInput').click();
+    });
+    document.getElementById('thumbInput').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      if (!/^image\/(png|jpe?g|webp|gif)$/.test(f.type)) { toast('Thumbnail must be an image', 'err'); return; }
+      if (f.size > 5 * 1024 * 1024) { toast('Thumbnail max size is 5MB', 'err'); return; }
+      setThumb(f);
+    });
     refreshIcons();
   }
+
+  function setThumb(f) {
+    selectedThumb = f;
+    const prev = document.getElementById('thumbPreview'), name = document.getElementById('thumbName'), btn = document.getElementById('thumbBtn');
+    if (!prev) return;
+    if (f) {
+      prev.innerHTML = '';
+      const im = document.createElement('img');
+      im.src = URL.createObjectURL(f);
+      im.className = 'w-full h-full object-cover';
+      prev.appendChild(im);
+      name.textContent = f.name; btn.textContent = 'Remove';
+    } else {
+      prev.innerHTML = '<i data-lucide="image" class="w-5 h-5 text-violet-400/60"></i>';
+      name.textContent = 'Add a cover image for this file'; btn.textContent = 'Choose';
+      refreshIcons();
+    }
+  }
+
+  function updateThumbRow() {
+    const row = document.getElementById('thumbRow');
+    if (!row) return;
+    const show = !!selectedFile && !isImageName(selectedFile.name);
+    row.classList.toggle('hidden', !show);
+    if (!show && selectedThumb) setThumb(null);
+  }
+  const _handleFile = handleFile;
+  window.handleFile = function (file) { _handleFile(file); updateThumbRow(); };
 
   const _resetUploadForm = resetUploadForm;
   window.resetUploadForm = function () {
     _resetUploadForm();
+    setThumb(null);
+    document.getElementById('thumbRow')?.classList.add('hidden');
     const i = document.getElementById('inputLink');
     if (i) { i.value = ''; i.classList.add('hidden'); }
     const s = document.querySelector('#addLinkBtn span');
@@ -150,30 +222,38 @@
     } catch (e) { return null; }
   }
 
+  async function uploadToBucket(file, prefix) {
+    const safeName = `${prefix}${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+    const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
+      method: 'POST', headers: authHeaders({ 'Content-Type': file.type }), body: file
+    });
+    if (!r.ok) throw await sbError(r, 'Upload failed');
+    return `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
+  }
+
   window.publishPost = async function () {
     const title = el('inputTitle').value.trim(), desc = el('inputDesc').value.trim();
     const rawLink = (el('inputLink')?.value || '').trim();
     const link = rawLink ? normalizeLink(rawLink) : null;
     if (rawLink && !link) { toast('That link doesn’t look right', 'err'); return; }
-    if (link && selectedFile) { toast('Add a file or a link, not both', 'err'); return; }
     if (!title && !desc && !selectedFile && !link) return;
     const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Publishing…';
     try {
-      let fileUrl = link, linkUrl = null;
-      if (link) {
-        linkUrl = link;
-        btn.textContent = 'Capturing preview…';
-        const shot = await captureScreenshot(link);
-        if (shot) fileUrl = shot; else toast('Couldn’t capture a preview, posting the link only', 'err');
-      }
+      let fileUrl = null, thumbUrl = null;
       if (selectedFile) {
         el('dzProgress').classList.remove('hidden');
-        const safeName = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-        const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${safeName}`, {
-          method: 'POST', headers: authHeaders({ 'Content-Type': selectedFile.type }), body: selectedFile
-        });
-        if (!r.ok) throw await sbError(r, 'Upload failed');
-        fileUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${safeName}`;
+        fileUrl = await uploadToBucket(selectedFile, '');
+        if (selectedThumb) thumbUrl = await uploadToBucket(selectedThumb, 'thumb_');
+      }
+      if (link && (!selectedFile || (!thumbUrl && !isImageName(selectedFile.name)))) {
+        // Link alone: the screenshot is the post's picture. File + link, no thumbnail chosen: the screenshot becomes the thumbnail.
+        btn.textContent = 'Capturing preview…';
+        const shot = await captureScreenshot(link);
+        if (shot) { if (selectedFile) thumbUrl = shot; else fileUrl = shot; }
+        else {
+          if (!selectedFile) fileUrl = link;
+          toast('Couldn’t capture a preview of the link', 'err');
+        }
       }
       const fallbackTitle = link ? host(link) : '';
       const ins = await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
@@ -182,7 +262,8 @@
           title: title || selectedFile?.name || fallbackTitle || 'Post',
           subject: desc || title || fallbackTitle,
           file_url: fileUrl || '',
-          link_url: linkUrl,
+          link_url: link,
+          thumb_url: thumbUrl,
           author_name: currentUser.display_name, author_email: currentUser.email, author_photo: currentUser.avatar_url
         })
       });
@@ -191,100 +272,6 @@
     } catch (e) { console.log(e); toast('Publish failed: ' + (e?.message || 'unknown error'), 'err'); }
     finally { btn.disabled = false; btn.textContent = 'Publish'; }
   };
-
-  /* ── Long-press (or right-click) a message: Copy / Delete ── */
-  const msgCss = document.createElement('style');
-  msgCss.textContent = '#chatMessages .chat-bubble,#chatMessagesMobile .chat-bubble,#chatMessages .chat-bubble *,#chatMessagesMobile .chat-bubble *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}';
-  document.head.appendChild(msgCss);
-
-  let msgMenu = null, pressTimer = null, pressStart = null, suppressClick = false;
-  const closeMsgMenu = () => { if (msgMenu) { msgMenu.remove(); msgMenu = null; } };
-
-  async function copyText(t) {
-    try { await navigator.clipboard.writeText(t); }
-    catch (e) {
-      const ta = document.createElement('textarea');
-      ta.value = t; ta.style.cssText = 'position:fixed;opacity:0';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); } catch (e2) {}
-      ta.remove();
-    }
-    toast('Copied', 'ok');
-  }
-
-  async function deleteMessage(m) {
-    if (!confirm('Delete this message?')) return;
-    try {
-      const r = await fetch(`${SB_URL}/rest/v1/chat_messages?id=eq.${m.id}`, {
-        method: 'DELETE', headers: authHeaders({ Prefer: 'return=representation' })
-      });
-      const rows = r.ok ? await r.json() : [];
-      if (!rows.length) throw new Error('not deleted');
-      const i = chatMessages.findIndex((v) => String(v.id) === String(m.id));
-      if (i > -1) chatMessages.splice(i, 1);
-      renderChatMessages();
-      toast('Message deleted', 'ok');
-    } catch (e) { toast('Could not delete message', 'err'); }
-  }
-
-  function showMsgMenu(bubble, x, y) {
-    const m = chatMessages.find((v) => String(v.id) === String(bubble.dataset.mid));
-    if (!m) return;
-    closeMsgMenu();
-    const isAudio = (m.text || '').startsWith('[AUDIO::');
-    const mine = m.uid === chatUserId && !String(m.id).startsWith('temp');
-    msgMenu = document.createElement('div');
-    msgMenu.className = 'x-dropdown rounded-xl overflow-hidden';
-    msgMenu.style.cssText = 'position:fixed;z-index:10000;min-width:160px;left:0;top:0;visibility:hidden';
-    msgMenu.innerHTML =
-      '<button data-act="copy" class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> Copy</button>' +
-      (mine ? '<button data-act="delete" class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>' : '');
-    document.body.appendChild(msgMenu);
-    refreshIcons();
-    const r = msgMenu.getBoundingClientRect();
-    const left = Math.max(8, Math.min(x - r.width / 2, window.innerWidth - r.width - 8));
-    let top = y - r.height - 12;
-    if (top < 8) top = Math.min(y + 12, window.innerHeight - r.height - 8);
-    msgMenu.style.left = left + 'px';
-    msgMenu.style.top = top + 'px';
-    msgMenu.style.visibility = 'visible';
-    msgMenu.addEventListener('click', (ev) => {
-      const act = ev.target.closest('button')?.dataset.act;
-      if (!act) return;
-      closeMsgMenu();
-      if (act === 'copy') copyText(isAudio ? m.text.replace('[AUDIO::', '').replace(']', '') : m.text);
-      if (act === 'delete') deleteMessage(m);
-    });
-  }
-
-  ['chatMessages', 'chatMessagesMobile'].forEach((id) => {
-    const box = document.getElementById(id);
-    if (!box) return;
-    box.addEventListener('pointerdown', (e) => {
-      const b = e.target.closest('.chat-bubble');
-      if (!b || e.button > 0) return;
-      pressStart = { x: e.clientX, y: e.clientY };
-      clearTimeout(pressTimer);
-      pressTimer = setTimeout(() => {
-        suppressClick = true;
-        showMsgMenu(b, pressStart.x, pressStart.y);
-        setTimeout(() => { suppressClick = false; }, 600);
-      }, 500);
-    });
-    ['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach((t) => box.addEventListener(t, () => clearTimeout(pressTimer), { passive: true }));
-    box.addEventListener('pointermove', (e) => {
-      if (pressStart && Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 10) clearTimeout(pressTimer);
-    }, { passive: true });
-    box.addEventListener('contextmenu', (e) => {
-      const b = e.target.closest('.chat-bubble');
-      if (!b) return;
-      e.preventDefault();
-      showMsgMenu(b, e.clientX, e.clientY);
-    });
-    box.addEventListener('click', (e) => { if (suppressClick) { e.preventDefault(); e.stopPropagation(); } }, true);
-  });
-  document.addEventListener('pointerdown', (e) => { if (msgMenu && !msgMenu.contains(e.target)) closeMsgMenu(); }, true);
-  window.addEventListener('resize', closeMsgMenu);
 
   /* ── Delete post: only say "deleted" if a row was really removed ── */
   window.deletePost = async function (id) {
