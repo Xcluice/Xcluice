@@ -383,7 +383,7 @@
       <!-- ═══ SIDEBAR (Desktop) ═══ -->
       <aside class="hidden md:flex flex-col w-64 sidebar-bg shrink-0">
         <!-- Logo -->
-        <div class="flex items-center gap-3 h-14 px-5 border-b border-violet-900/30 cursor-pointer hover:bg-violet-900/15 transition-colors" onclick="showOverlay('xcluiceInfoOverlay')" title="About Xcluice">
+        <div class="flex items-center gap-3 h-14 px-5 border-b border-violet-900/30">
           <div class="x-logo">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/>
@@ -466,7 +466,7 @@
         <header id="mainHeader" class="flex items-center justify-between h-14 px-4 md:px-6 header-bg shrink-0 z-30 transition-all">
           <div class="flex items-center gap-3">
             <!-- Mobile logo -->
-            <div class="flex items-center gap-2.5 md:hidden cursor-pointer active:opacity-70 transition-opacity" onclick="showOverlay('xcluiceInfoOverlay')">
+            <div class="flex items-center gap-2.5 md:hidden">
               <div class="x-logo p-1.5">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <path d="M3 3L10.5 12L3 21H6.5L12 14.5L17.5 21H21L13.5 12L21 3H17.5L12 9.5L6.5 3H3Z" fill="white"/>
@@ -476,7 +476,7 @@
             </div>
             <div class="relative hidden sm:block">
               <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400/50 pointer-events-none"></i>
-              <input id="searchInput" type="text" placeholder="Search projects…" class="x-input pl-9 pr-4 py-2 text-sm rounded-xl w-56 md:w-72" oninput="handleSearch()" />
+              <input id="searchInput" name="xc-search" type="text" autocomplete="off" autocorrect="off" data-lpignore="true" data-form-type="other" placeholder="Search projects…" class="x-input pl-9 pr-4 py-2 text-sm rounded-xl w-56 md:w-72" oninput="handleSearch()" />
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -545,7 +545,7 @@
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                   </button>
                 </div>
-                <div id="snapSearch" class="snap-search"><input id="snapSearchInput" type="text" placeholder="Search" autocomplete="off" oninput="renderChatUsers()" /></div>
+                <div id="snapSearch" class="snap-search"><input id="snapSearchInput" name="xc-chat-search" type="text" autocomplete="off" autocorrect="off" data-lpignore="true" data-form-type="other" placeholder="Search" oninput="renderChatUsers()" /></div>
                 <div id="peopleList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
                 <button class="snap-fab" onclick="toggleSnapSearch(true)" aria-label="New chat">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/><path d="M12 9v6M9 12h6"/></svg>
@@ -570,7 +570,7 @@
                   <div id="chatMessages" class="flex-1 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3 min-h-0 selectable-text"></div>
                   <div class="px-4 py-2.5 border-t border-violet-900/30 header-bg shrink-0">
                     <div id="chatInputWrapper" class="flex items-center gap-2 w-full">
-                      <input id="chatInput" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
+                      <input id="chatInput" name="xc-msg" type="text" enterkeyhint="send" autocomplete="off" autocorrect="off" data-lpignore="true" data-form-type="other" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
                       <button onclick="startRecording(false)" class="p-2 rounded-full hover:bg-violet-900/30 text-violet-400 transition-colors" style="border:1px solid rgba(139,92,246,0.2)"><i data-lucide="mic" class="w-4 h-4"></i></button>
                       <button id="sendBtn" onclick="sendChatMessage()" class="p-2 btn-primary rounded-full text-white"><i data-lucide="send" class="w-4 h-4"></i></button>
                     </div>
@@ -598,7 +598,7 @@
                 <div id="chatMessagesMobile" class="flex-1 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3 min-h-0 selectable-text"></div>
                 <div class="px-4 py-2.5 border-t border-violet-900/30 header-bg shrink-0">
                   <div id="chatInputWrapperMobile" class="flex items-center gap-2 w-full">
-                    <input id="chatInputMobile" type="text" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
+                    <input id="chatInputMobile" name="xc-msg-m" type="text" enterkeyhint="send" autocomplete="off" autocorrect="off" data-lpignore="true" data-form-type="other" placeholder="Type a message…" class="flex-1 px-4 py-2 rounded-full text-sm x-input" onkeypress="if(event.key==='Enter') sendChatMessage()" />
                     <button onclick="startRecording(true)" class="p-2 rounded-full hover:bg-violet-900/30 text-violet-400 transition-colors" style="border:1px solid rgba(139,92,246,0.2)"><i data-lucide="mic" class="w-4 h-4"></i></button>
                     <button onclick="sendChatMessage()" class="p-2 btn-primary rounded-full text-white"><i data-lucide="send" class="w-4 h-4"></i></button>
                   </div>
@@ -619,20 +619,14 @@
         </div>
 
         <!-- ═══ MOBILE BOTTOM NAV ═══ -->
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bottom-nav z-50 grid grid-cols-5">
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bottom-nav z-50 grid grid-cols-3">
           <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="all" onclick="setFilter('all')">
             <i data-lucide="layout-grid" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Products</span>
-          </button>
-          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="media" onclick="setFilter('media')">
-            <i data-lucide="monitor" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Previews</span>
           </button>
           <button id="fab" onclick="openUpload()" class="flex flex-col items-center justify-center">
             <div class="w-12 h-12 btn-primary rounded-full flex items-center justify-center -mt-5 border-4 xcluice-glow" style="border-color:rgba(4,2,12,0.9)">
               <i data-lucide="plus" class="w-5 h-5 text-white"></i>
             </div>
-          </button>
-          <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="docs" onclick="setFilter('docs')">
-            <i data-lucide="folder-open" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Assets</span>
           </button>
           <button class="bnav-item flex flex-col items-center justify-center gap-1 text-violet-400/40 transition-colors" data-filter="people" onclick="setFilter('people')">
             <i data-lucide="messages-square" class="w-5 h-5"></i><span class="text-[9px] font-bold tracking-wide">Discuss</span>
@@ -802,11 +796,11 @@
         <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
           <div>
             <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Title</label>
-            <input id="inputTitle" type="text" placeholder="Give your post a title…" maxlength="80" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input" />
+            <input id="inputTitle" name="xc-title" autocomplete="off" autocorrect="off" data-lpignore="true" data-form-type="other" type="text" placeholder="Give your post a title…" maxlength="80" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input" />
           </div>
           <div>
             <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Description</label>
-            <textarea id="inputDesc" rows="3" placeholder="What's this about?" maxlength="1000" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input resize-none"></textarea>
+            <textarea id="inputDesc" name="xc-desc" autocomplete="off" autocorrect="off" data-lpignore="true" data-form-type="other" rows="3" placeholder="What's this about?" maxlength="1000" class="w-full px-3.5 py-2.5 rounded-xl text-sm x-input resize-none"></textarea>
           </div>
           <div>
             <label class="block text-[10px] font-bold uppercase tracking-widest text-violet-400/60 mb-2">Attach File <span class="normal-case font-normal text-violet-400/30">(optional)</span></label>
