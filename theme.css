@@ -1,0 +1,56 @@
+/* Xcluice theme: match the chat UI (black, frosted glass, white text, blue-teal accent). Loaded after the page styles. */
+:root { --x-bg:#000; --x-surface:rgba(255,255,255,0.07); --x-line:rgba(255,255,255,0.08); --x-muted:#8e8e93; --x-a:#0FADFF; --x-b:#00D4C8; }
+html, body, body.mesh-bg { background:#000 !important; animation:none !important; }
+body { color:#fff; }
+
+/* Surfaces */
+.sidebar-bg { background:rgba(10,10,12,0.62) !important; backdrop-filter:blur(22px) saturate(1.6); -webkit-backdrop-filter:blur(22px) saturate(1.6); border-right:1px solid var(--x-line) !important; }
+.glass-panel { background:rgba(18,18,20,0.86) !important; backdrop-filter:blur(24px) saturate(1.5); -webkit-backdrop-filter:blur(24px) saturate(1.5); border:1px solid var(--x-line) !important; box-shadow:0 20px 60px rgba(0,0,0,0.6) !important; }
+.modal-bg { background:rgba(0,0,0,0.72) !important; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.x-card { background:rgba(255,255,255,0.05) !important; border:1px solid var(--x-line) !important; border-radius:18px !important; }
+.x-card:hover { border-color:rgba(255,255,255,0.2) !important; box-shadow:none !important; }
+.x-dropdown { background:rgba(28,28,30,0.92) !important; border:1px solid var(--x-line) !important; border-radius:16px !important; box-shadow:0 16px 48px rgba(0,0,0,0.65) !important; backdrop-filter:blur(24px) saturate(1.6); -webkit-backdrop-filter:blur(24px) saturate(1.6); }
+.bottom-nav { background:rgba(10,10,12,0.7) !important; backdrop-filter:blur(22px) saturate(1.6); -webkit-backdrop-filter:blur(22px) saturate(1.6); border-top:1px solid var(--x-line) !important; }
+.brand-border { border:1px solid var(--x-line) !important; }
+
+/* Buttons: no more purple */
+.btn-primary { background:linear-gradient(135deg,var(--x-a),var(--x-b)) !important; color:#fff !important; border:0 !important; border-radius:999px !important; font-weight:700 !important; box-shadow:none !important; }
+.btn-primary:hover { box-shadow:0 6px 22px rgba(15,173,255,0.35) !important; filter:brightness(1.07); }
+.btn-primary:active { transform:scale(0.95); }
+.x-logo { background:linear-gradient(135deg,var(--x-a),var(--x-b)) !important; box-shadow:none !important; }
+.cat-pill { background:rgba(255,255,255,0.09) !important; border:0 !important; color:#fff !important; }
+.cat-pill:hover { background:rgba(255,255,255,0.16) !important; box-shadow:none !important; }
+.cat-pill.active { background:#fff !important; color:#000 !important; box-shadow:none !important; }
+.x-badge, .theme-active { background:rgba(255,255,255,0.1) !important; border:0 !important; color:#fff !important; }
+.nav-item.active { background:rgba(255,255,255,0.1) !important; color:#fff !important; border:0 !important; }
+.bnav-item.active, .bnav-item.active svg { color:var(--x-a) !important; fill:var(--x-a) !important; }
+
+/* Inputs */
+.x-input { background:rgba(255,255,255,0.09) !important; border:1px solid transparent !important; color:#fff !important; border-radius:14px !important; }
+.x-input:focus { border-color:rgba(15,173,255,0.6) !important; box-shadow:0 0 0 3px rgba(15,173,255,0.15) !important; }
+.x-input::placeholder { color:var(--x-muted) !important; }
+
+/* Text */
+.brand-text { background:none !important; -webkit-text-fill-color:#fff !important; color:#fff !important; }
+[class*="text-violet-"] { color:var(--x-muted) !important; }
+[class^="text-violet-1"], [class*=" text-violet-1"], [class^="text-violet-2"], [class*=" text-violet-2"], [class^="text-violet-3"], [class*=" text-violet-3"] { color:rgba(255,255,255,0.92) !important; }
+.text-cyan-300, .text-cyan-200 { color:var(--x-a) !important; }
+
+/* Tailwind violet backgrounds / borders -> neutral glass */
+[class^="bg-violet-"], [class*=" bg-violet-"] { background-color:rgba(255,255,255,0.08) !important; }
+[class*="hover:bg-violet-"]:hover { background-color:rgba(255,255,255,0.12) !important; }
+[class^="border-violet-"], [class*=" border-violet-"] { border-color:var(--x-line) !important; }
+
+/* Inline purple styles */
+[style*="139,92,246"][style*="border"], [style*="139, 92, 246"][style*="border"] { border-color:rgba(255,255,255,0.12) !important; }
+[style*="139,92,246"][style*="background"], [style*="139, 92, 246"][style*="background"] { background:rgba(255,255,255,0.06) !important; }
+[style*="#7c3aed"], [style*="124,58,237"] { background:linear-gradient(135deg,var(--x-a),var(--x-b)) !important; }
+[stroke*="139,92,246"], [stroke="#a78bfa"], [stroke*="139, 92, 246"] { stroke:var(--x-muted) !important; }
+[fill*="139,92,246"] { fill:var(--x-muted) !important; }
+
+/* Misc */
+.spinner { border-color:rgba(255,255,255,0.15) !important; border-top-color:var(--x-a) !important; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background:#3a3a3c !important; }
+.pdf-page { box-shadow:0 6px 28px rgba(0,0,0,0.6) !important; }
+.pdf-tool { background:rgba(255,255,255,0.1) !important; border:0 !important; color:#fff !important; }
+@keyframes pulseGlow { 0%,100% { box-shadow:0 0 12px rgba(15,173,255,0.4); } 50% { box-shadow:0 0 24px rgba(15,173,255,0.8); } }
