@@ -424,6 +424,25 @@
     }, 180);
   };
 
+  /* ── Back-button guard: the first Back never leaves the site; a second Back within 2s does ── */
+  (function backGuard() {
+    if (history.state && history.state.guard) return;
+    const base = history.state || { filter: 'all' };
+    history.replaceState({ filter: '__guard', guard: true }, '', location.href);
+    history.pushState(base, '', location.href);
+    const _setFilter = setFilter;
+    window.setFilter = function (f) { if (f === '__guard') return; return _setFilter.apply(this, arguments); };
+    let last = 0;
+    window.addEventListener('popstate', (e) => {
+      if (!(e.state && e.state.guard)) return;
+      const now = Date.now();
+      if (now - last < 2000) { history.back(); return; }
+      last = now;
+      toast('Press back again to exit', 'ok');
+      history.pushState({ filter: activeFilter || 'all' }, '', '#' + (activeFilter || 'all'));
+    });
+  })();
+
   /* ── Chat thread: animations + shareable link  #people/thread-<name> ── */
   const slug = (n) => String(n || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const THREAD_RE = /^#people\/thread-([a-z0-9-]+)$/;
