@@ -465,6 +465,7 @@
       }
     </style>
     <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/profiles.css" />
   </head>
   <body class="mesh-bg text-slate-100 overflow-hidden" style="min-height:100vh;">
 
@@ -542,6 +543,10 @@
             </div>
             <i data-lucide="chevron-up" class="w-3.5 h-3.5 text-violet-400/40 shrink-0"></i>
             <div id="userDropdown" class="hidden absolute bottom-full left-0 right-0 mb-1 x-dropdown rounded-xl overflow-hidden z-50">
+              <div class="flex items-center gap-2 p-3 border-b border-violet-800/30 cursor-pointer hover:bg-violet-900/30" onclick="event.stopPropagation(); openMyProfile()">
+                <i data-lucide="user" class="w-4 h-4 text-violet-400"></i>
+                <span class="text-sm font-medium text-slate-200">View profile</span>
+              </div>
               <div class="flex items-center gap-2 p-3 border-b border-violet-800/30 cursor-pointer hover:bg-violet-900/30" onclick="triggerAvatarUpload()">
                 <i data-lucide="image" class="w-4 h-4 text-violet-400"></i>
                 <span class="text-sm font-medium text-slate-200">Change Avatar</span>
@@ -601,6 +606,9 @@
                   <p class="text-xs text-violet-400/60" id="mobileUserEmail"></p>
                 </div>
                 <div class="p-2 space-y-0.5">
+                  <button onclick="event.stopPropagation(); openMyProfile()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-violet-900/30 text-sm">
+                    <i data-lucide="user" class="w-4 h-4 text-violet-400"></i>View profile
+                  </button>
                   <button onclick="triggerAvatarUpload()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-violet-900/30 text-sm">
                     <i data-lucide="image" class="w-4 h-4 text-violet-400"></i>Change Avatar
                   </button>
@@ -645,7 +653,7 @@
               <!-- People List -->
               <div id="chatListPane" class="snap-pane w-full md:w-80 lg:w-96 shrink-0 flex flex-col">
                 <div class="snap-header">
-                  <button id="snapMe" class="snap-me" onclick="triggerAvatarUpload()" aria-label="Your profile"></button>
+                  <button id="snapMe" class="snap-me" onclick="openMyProfile()" aria-label="Your profile"></button>
                   <div class="snap-title">Chat</div>
                   <button class="snap-hbtn" onclick="toggleSnapSearch()" aria-label="Search">
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -1394,7 +1402,7 @@
               <span class="absolute bottom-2 right-2 text-[9px] font-bold tracking-wider rounded-full px-2 py-0.5 bg-gradient-to-r ${bc} border" style="backdrop-filter:blur(8px)">${badgeLabel[t]||'File'}</span>
             </div>
             <div class="p-3 md:p-4 flex items-start gap-3">
-              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 overflow-hidden mt-0.5 xcluice-glow-sm">${avatarHtml}</div>
+              <div class="pf-tap w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 overflow-hidden mt-0.5 xcluice-glow-sm" data-pf-email="${pfAttr(p.author_email)}" data-pf-name="${pfAttr(p.author_name)}" data-pf-photo="${pfAttr(p.author_photo)}" role="button" aria-label="View ${pfAttr(author)}'s profile">${avatarHtml}</div>
               <div class="flex-1 min-w-0">
                 <h3 class="font-semibold text-sm leading-snug line-clamp-2 text-slate-100">${esc(p.subject||p.title||'Untitled')}</h3>
                 <p class="text-[11px] text-violet-400/50 mt-1 truncate font-medium">${esc(author)} · ${timeAgo(p.created_at)}</p>
@@ -1460,6 +1468,7 @@
         el('viewerAuthor').textContent = author;
         el('viewerDate').textContent   = new Date(p.created_at).toLocaleString();
         el('viewerAvatar').innerHTML   = p.author_photo ? `<img src="${esc(p.author_photo)}" alt="${esc(author)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
+        { const va = el('viewerAvatar'); va.classList.add('pf-tap'); va.dataset.pfEmail = p.author_email || ''; va.dataset.pfName = p.author_name || ''; va.dataset.pfPhoto = p.author_photo || ''; }
         const content = el('viewerContent');
         if (p.file_url) {
           const type = getFileType(p.file_url);
@@ -1846,6 +1855,7 @@
 
       // Back/forward button intercept
       window.addEventListener('popstate', (e) => {
+        if (window.xcProfiles && window.xcProfiles.onPop(e)) return;   // profile page / story viewer
         // Close any open modal first
         const overlays = ['viewerOverlay','uploadOverlay','fosthubAuthOverlay','xcluiceInfoOverlay'];
         const anyOpen = overlays.some(id => !el(id)?.classList.contains('hidden'));
@@ -2059,7 +2069,7 @@
             sub = `${icon}<span>${label}${isAudio ? ' · Voice' : ''}</span><span class="dot">·</span><span>${snapAgo(r.last.created_at)}</span>`;
           }
           return `<div class="snap-row${snapAnimateNext?' anim':''}" style="animation-delay:${Math.min(i,12)*35}ms" onclick='openDM(${JSON.stringify({uid:u.uid,name:u.name,email:u.email,photo:u.photo}).replace(/'/g,"&#39;")})'>
-            <div class="snap-avw">${avatar}${r.activeNow ? '<span class="snap-dot"></span>' : ''}</div>
+            <div class="snap-avw pf-tap" data-pf-uid="${attr(u.uid)}" data-pf-name="${attr(u.name)}" data-pf-email="${attr(u.email)}" data-pf-photo="${attr(u.photo)}">${avatar}${r.activeNow ? '<span class="snap-dot"></span>' : ''}</div>
             <div class="snap-body">
               <div class="snap-name">${esc(name)}</div>
               <div class="snap-sub ${r.unread ? 'new' : ''}">${sub}</div>
@@ -2080,6 +2090,7 @@
         el('chatPlaceholder').classList.add('hidden');
         el('chatThreadView').classList.remove('hidden'); el('chatThreadView').classList.add('flex');
         el('chatThreadMobile').classList.remove('hidden'); el('chatThreadMobile').classList.add('flex');
+        document.querySelectorAll('#chatThreadAvatar, #chatThreadAvatarMobile').forEach(a => { const w = a.closest('.snap-avw'); if (!w) return; w.classList.add('pf-tap'); w.dataset.pfUid = person.uid || ''; w.dataset.pfName = person.name || ''; w.dataset.pfEmail = person.email || ''; w.dataset.pfPhoto = person.photo || ''; });
         bindThreadGestures(); syncComposer(); updateThreadSub();
         renderChatMessages();
       }
@@ -2533,6 +2544,7 @@
           else if (id === 'xcluiceInfoOverlay') hideOverlay('xcluiceInfoOverlay');
         }
       }
+      function pfAttr(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
       function el(id) { return document.getElementById(id); }
       function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
       function timeAgo(iso) {
@@ -2559,5 +2571,6 @@
       }
     </script>
     <script src="links.js"></script>
+    <script src="profiles.js"></script>
   </body>
 </html>
