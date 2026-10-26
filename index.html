@@ -1038,6 +1038,13 @@
 
       document.addEventListener('DOMContentLoaded', async () => {
         applyStoredTheme();
+        registerServiceWorker();
+        // Tapping a notification while the site is already open: jump to that conversation
+        navigator.serviceWorker?.addEventListener('message', e => {
+          if (e.data && e.data.type === 'open-url') { const h = String(e.data.url || '').split('#')[1]; if (h) location.hash = '#' + h; }
+        });
+        // Coming back to the tab / unlocking the phone: catch up on new messages immediately
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && chatInitialized && typeof pollChat === 'function') pollChat(); });
         loadPosts();
         setInterval(loadPosts, 20000);
         fetchActiveUsers();
@@ -1254,7 +1261,7 @@
         chatUserId = profile.id;
         chatUserName = profile.display_name; chatUserEmail = profile.email; chatUserPhoto = profile.avatar_url;
         updateUserUI(); closeFostHubAuth();
-        if (activeFilter === 'people') initChat();
+        initChat();
         fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${profile.id}`, {
           method:'PATCH', headers: authHeaders({'Content-Type':'application/json'}),
           body: JSON.stringify({last_active:new Date().toISOString()})
@@ -1905,19 +1912,27 @@
         _openDiscussions();
       }
 
-      function fireNotif(title, body) {
+      const notifSlug = n => String(n || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      let swReg = null;
+      function registerServiceWorker() {
+        if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+        return navigator.serviceWorker.register('/sw.js').then(r => (swReg = r)).catch(() => null);
+      }
+      async function fireNotif(title, body, opts = {}) {
+        if (!('Notification' in window)) return;
+        notifPermission = Notification.permission;
         if (notifPermission !== 'granted') return;
-        if (document.visibilityState === 'visible' && activeFilter === 'people') return;
+        // Skip only when the person is already looking at this conversation
+        if (document.visibilityState === 'visible' && activeFilter === 'people' && opts.fromUid !== undefined) {
+          const watching = opts.fromUid === null ? !currentThread : (currentThread && currentThread.uid === opts.fromUid);
+          if (watching) return;
+        }
+        const o = { body, icon: '/icon-192.png', badge: '/icon-192.png', tag: opts.tag || 'xcluice-msg', renotify: true, vibrate: [100, 50, 100], data: { url: opts.url || '/#people' } };
         try {
-          new Notification(title, {
-            body,
-            icon: 'https://api.dicebear.com/7.x/initials/svg?seed=X&backgroundColor=7c3aed&textColor=ffffff',
-            badge: 'https://api.dicebear.com/7.x/initials/svg?seed=X&backgroundColor=7c3aed&textColor=ffffff',
-            tag: 'xcluice-msg',
-            renotify: true,
-            vibrate: [100, 50, 100]
-          });
-        } catch(e) {}
+          const reg = swReg || (await (navigator.serviceWorker?.ready.catch(() => null)));
+          if (reg && reg.showNotification) { await reg.showNotification(title, o); return; }   // required on Android Chrome
+        } catch {}
+        try { new Notification(title, o); } catch {}                                          // desktop fallback
       }
 
       // Gate check before opening discussions
@@ -2083,10 +2098,11 @@
         try {
           const url = lastMessageId
             ? `${SB_URL}/rest/v1/chat_messages?id=gt.${lastMessageId}&order=created_at.asc`
-            : `${SB_URL}/rest/v1/chat_messages?order=created_at.asc&limit=100`;
+            : `${SB_URL}/rest/v1/chat_messages?order=created_at.desc&limit=100`;   // newest 100, reversed below
           const r = await fetch(url, { headers: authHeaders() });
-          const msgs = await r.json();
-          if (!msgs.length) return;
+          let msgs = await r.json();
+          if (!Array.isArray(msgs) || !msgs.length) return;
+          if (!lastMessageId) msgs.reverse();
 
           const isInitialLoad = !lastMessageId;
           const newMsgs = [];
@@ -2107,12 +2123,13 @@
           if (!isInitialLoad) {
             newMsgs.forEach(m => {
               if (m.uid === chatUserId) return;
+              if (Date.now() - new Date(m.created_at).getTime() > 5*60000) return;   // never notify about old messages
               const isDMToMe = m.to_uid === chatUserId;
               const isGlobal = !m.to_uid;
               if (isDMToMe || isGlobal) {
                 const preview = (m.text||'').startsWith('[AUDIO::') ? '🎤 Voice message' : m.text;
                 const title = isDMToMe ? `💬 ${m.name} (DM)` : `💬 ${m.name} · Discussions`;
-                fireNotif(title, preview);
+                fireNotif(title, preview, { fromUid: isDMToMe ? m.uid : null, tag: isDMToMe ? 'dm-' + m.uid : 'global', url: isDMToMe ? '/#people/thread-' + notifSlug(m.name) : '/#people' });
               }
             });
           }
