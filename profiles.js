@@ -19,6 +19,7 @@
     trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
     grid: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1"/></svg>',
     pencil: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
+    out: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>',
     msg: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>',
     cam: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     img: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-8 9"/></svg>',
@@ -118,6 +119,7 @@
     let actions = '';
     if (me) actions = `<button class="pf-btn primary" data-a="addstory">${IC.cam} Add story</button><button class="pf-btn" data-a="photo">${IC.img} Change photo</button><button class="pf-btn pf-edit" data-a="edit" aria-label="Edit profile">${IC.pencil}</button>`;
     else if (p.id) actions = `<button class="pf-btn ${following ? 'on' : 'primary'}" data-a="follow">${following ? 'Following' : 'Follow'}</button><button class="pf-btn" data-a="message">${IC.msg} Message</button>`;
+    const signout = me ? `<div class="pf-actions" style="margin-top:8px"><button class="pf-btn pf-danger" data-a="signout">${IC.out} Sign out</button></div>` : '';
     const strip = ss.length ? `<div class="pf-strip"><div class="pf-label">Stories · 24h</div><div class="pf-strip-row">${ss.map((s, i) => {
       const seen = seenSet().has(s.id);
       const m = s.kind === 'video' ? `<video src="${A(s.media_url)}#t=0.1" muted playsinline preload="metadata"></video>` : `<img src="${A(s.media_url)}" alt="" loading="lazy">`;
@@ -130,7 +132,7 @@
       </div>
       <div class="pf-name"><span>${esc(p.name)}</span>${p.verified ? TICK : ''}${isAdmin ? '<span class="pf-badge">ADMIN</span>' : (p.role && p.role !== 'Member' && p.role !== 'member' ? `<span class="pf-badge">${esc(String(p.role).toUpperCase())}</span>` : '')}</div>
       <div class="pf-sub">${esc(sub)}</div>
-      ${actions ? `<div class="pf-actions">${actions}</div>` : ''}
+      ${actions ? `<div class="pf-actions">${actions}</div>` : ''}${signout}
       ${strip}
       <div class="pf-tabs"><div>${IC.grid}</div></div>
       <div class="pf-grid">${posts.length ? posts.map(tileHTML).join('') : `<div class="pf-empty">${me ? 'You haven’t posted anything yet.' : 'No posts yet.'}</div>`}</div>`;
@@ -194,10 +196,18 @@
       <label>Display name<input id="pfeName" maxlength="40" autocomplete="off" value="${A(p.name)}"></label>
       <label>Username<input id="pfeUser" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false" value="${A(p.username)}"></label>
       <div class="pf-editerr" id="pfeErr"></div>
-      <div class="pf-editbtns"><button class="pf-btn" data-e="cancel">Cancel</button><button class="pf-btn primary" data-e="save">Save</button></div></div>`;
+      <div class="pf-editbtns"><button class="pf-btn" data-e="cancel">Cancel</button><button class="pf-btn primary" data-e="save">Save</button></div>
+      <details class="pf-pw"><summary>Change password</summary>
+        <label>Current password<input id="pfpOld" type="password" autocomplete="current-password"></label>
+        <label>New password<input id="pfpNew" type="password" autocomplete="new-password"></label>
+        <label>Confirm new password<input id="pfpNew2" type="password" autocomplete="new-password"></label>
+        <div class="pf-editerr" id="pfpErr"></div>
+        <button class="pf-btn" data-e="pw">Update password</button>
+      </details></div>`;
     m.addEventListener('click', (e) => {
       if (e.target === m || e.target.closest('[data-e="cancel"]')) m.remove();
       else if (e.target.closest('[data-e="save"]')) saveEdit(m);
+      else if (e.target.closest('[data-e="pw"]')) savePassword(m);
     });
     pfEl.appendChild(m);
     setTimeout(() => { const i = $('pfeName'); if (i) i.focus(); }, 50);
@@ -233,6 +243,28 @@
     } catch (e) { err.textContent = 'Couldn’t save. Try again.'; btn.disabled = false; }
   }
 
+  async function savePassword(m) {
+    const err = $('pfpErr'), btn = m.querySelector('[data-e="pw"]');
+    const oldP = $('pfpOld').value, n1 = $('pfpNew').value, n2 = $('pfpNew2').value;
+    err.style.color = '#ff6b6b';
+    if (!oldP || !n1) { err.textContent = 'Fill in your current and new password.'; return; }
+    if (n1.length < 6) { err.textContent = 'New password must be at least 6 characters.'; return; }
+    if (n1 !== n2) { err.textContent = 'New passwords do not match.'; return; }
+    if (n1 === oldP) { err.textContent = 'New password must be different.'; return; }
+    if (!supabase || !currentUser || !currentUser.email) { err.textContent = 'Please sign in again.'; return; }
+    btn.disabled = true; err.textContent = '';
+    try {
+      const chk = await supabase.auth.signInWithPassword({ email: currentUser.email, password: oldP });
+      if (chk.error) { err.textContent = 'Current password is incorrect.'; return; }
+      const up = await supabase.auth.updateUser({ password: n1 });
+      if (up.error) { err.textContent = up.error.message || 'Couldn’t change password.'; return; }
+      ['pfpOld', 'pfpNew', 'pfpNew2'].forEach((id) => { $(id).value = ''; });
+      err.style.color = '#2EE66B'; err.textContent = 'Password updated.';
+      if (typeof toast === 'function') toast('Password updated', 'ok');
+    } catch (e) { err.textContent = 'Couldn’t change password. Try again.'; }
+    finally { btn.disabled = false; }
+  }
+
   function onProfileClick(e) {
     const t = e.target.closest('[data-a]'); if (!t) return;
     const a = t.dataset.a, p = pfCur;
@@ -240,6 +272,7 @@
     else if (a === 'follow') toggleFollow();
     else if (a === 'addstory') pickStory();
     else if (a === 'edit') openEdit();
+    else if (a === 'signout') { if (confirm('Sign out of Xcluice?')) { closeProfile(() => { try { logOut({ stopPropagation() {} }); } catch (err) {} }); } }
     else if (a === 'photo') { if (typeof triggerAvatarUpload === 'function') triggerAvatarUpload(); }
     else if (a === 'avatar') { if (p && p.id && storiesOf(p.id).length) openStories([p.id], 0, 0); else if (p && currentUser && p.id === currentUser.id) pickStory(); }
     else if (a === 'story') { if (p && p.id) openStories([p.id], 0, +t.dataset.i || 0); }
@@ -475,6 +508,13 @@
     const t = e.target.closest('.pf-tap'); if (!t) return;
     e.preventDefault(); e.stopPropagation();
     openProfile({ uid: t.dataset.pfUid || undefined, email: t.dataset.pfEmail || undefined, name: t.dataset.pfName || undefined, photo: t.dataset.pfPhoto || undefined });
+  }, true);
+
+  // Tapping your own avatar in the sidebar / header opens your profile directly
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('#userAvatarTop, #userAvatarMobile'); if (!t || !currentUser) return;
+    e.preventDefault(); e.stopPropagation();
+    window.openMyProfile();
   }, true);
 
   // Called from index.html's popstate handler. Returns true when it handled the event.
