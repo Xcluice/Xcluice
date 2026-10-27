@@ -174,8 +174,8 @@
       <div class="pf-grid">${posts.length ? posts.map(tileHTML).join('') : `<div class="pf-empty">${me ? 'You haven’t posted anything yet.' : 'No posts yet.'}</div>`}</div>`;
   }
 
-  async function openProfile(ref) {
-    ref = ref || {};
+  async function openProfile(ref, opts) {
+    ref = ref || {}; opts = opts || {};
     if (!currentUser) { toast('Sign in to view profiles', 'err'); if (typeof openFostHubAuth === 'function') openFostHubAuth(); return; }
     if (!ref.uid && !ref.email && !ref.name) return;
     if (pfOpen && pfCur && ((ref.uid && ref.uid === pfCur.id) || (ref.email && lc(ref.email) === lc(pfCur.email)))) return;
@@ -183,15 +183,20 @@
     ensureProfileDom();
     const wasOpen = pfOpen;
     pfCur = null; $('pfBody').innerHTML = skeleton(); $('pfTitle').textContent = '';
+    const hashFor = (r) => '#profile-' + (lc(r.uid || r.name || 'user').replace(/[^a-z0-9_-]+/g, '-').slice(0, 40));
     if (!wasOpen) {
       pfEl.classList.remove('hidden', 'out'); pfEl.classList.remove('in'); void pfEl.offsetWidth; pfEl.classList.add('in');
-      history.pushState({ profile: true }, '', '#profile-' + (lc(ref.uid || ref.name || 'user').replace(/[^a-z0-9]+/g, '-').slice(0, 40)));
+      if (opts.replace) history.replaceState({ profile: true }, '', hashFor(ref));   // typed / followed link: this entry becomes the profile entry
+      else history.pushState({ profile: true }, '', hashFor(ref));
+    } else if (history.state && history.state.profile) {
+      history.replaceState({ profile: true }, '', hashFor(ref));   // switching profile: keep the address bar in sync
     }
     pfOpen = true; $('pfScroll').scrollTop = 0;
     const token = (openProfile.t = (openProfile.t || 0) + 1);
     await loadAll();
     if (token !== openProfile.t || !pfOpen) return;
     pfCur = resolve(ref); renderProfile(); refreshTray();
+    if (pfCur.id && history.state && history.state.profile) history.replaceState({ profile: true }, '', '#profile-' + pfCur.id);   // always a stable id-based link
     if (pfCur.id) { await Promise.allSettled([loadCounts(pfCur.id), loadUserPosts(pfCur)]); if (token === openProfile.t && pfOpen) renderProfile(); }
   }
   function doCloseProfile() {
@@ -597,27 +602,40 @@
   }
   if (typeof window.setSignedInUser === 'function') {
     const _s = window.setSignedInUser;
-    window.setSignedInUser = function () { const r = _s.apply(this, arguments); setTimeout(() => loadAll().then(refreshTray), 0); return r; };
+    window.setSignedInUser = function () { const r = _s.apply(this, arguments); setTimeout(() => loadAll().then(refreshTray), 0); setTimeout(tryPending, 60); return r; };
   }
   setInterval(() => { if (currentUser && !document.hidden) loadStories().then(() => { refreshTray(); }).catch(() => {}); }, 60000);
   window.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (currentUser) loadAll().then(refreshTray); else refreshTray(); }, 1500));
 
-  // Deep link: /#profile-<user id | username>
-  (function openFromLink() {
-    const key = window.__xcPendingProfile; if (!key) return; window.__xcPendingProfile = null;
-    const k = lc(key); let tries = 0;
-    const iv = setInterval(async () => {
-      if (!currentUser) {
-        if (++tries > 40) { clearInterval(iv); if (typeof toast === 'function') toast('Sign in to view profiles', 'err'); if (typeof openFostHubAuth === 'function') openFostHubAuth(); }
-        return;
-      }
-      clearInterval(iv);
-      try { await loadProfiles(); } catch {}
-      const slug = (n) => lc(n).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      const p = profiles.find((x) => lc(x.id) === k || lc(x.username) === k || slug(x.display_name) === k);
-      if (p) openProfile({ uid: p.id }); else if (typeof toast === 'function') toast('Couldn’t find that profile', 'err');
-    }, 250);
-  })();
+  // Deep links: /#profile-<user id | username>, on load and when the hash is edited in an open tab
+  let pendingKey = window.__xcPendingProfile || null, pendingReplace = false, authNudged = false;
+  window.__xcPendingProfile = null;
+  async function openByKey(key, replace) {
+    const k = lc(key);
+    try { await loadProfiles(); } catch {}
+    const slug = (n) => lc(n).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const p = profiles.find((x) => lc(x.id) === k || lc(x.username) === k || slug(x.display_name) === k);
+    if (p) openProfile({ uid: p.id }, { replace });
+    else { if (typeof toast === 'function') toast('Couldn’t find that profile', 'err'); if (replace) history.replaceState({ filter: 'all' }, '', '#all'); }
+  }
+  function tryPending() {
+    if (!pendingKey || !currentUser) return;
+    const k = pendingKey, r = pendingReplace; pendingKey = null; pendingReplace = false;
+    openByKey(k, r);
+  }
+  function nudgeSignIn() {
+    if (authNudged || currentUser) return; authNudged = true;
+    if (typeof toast === 'function') toast('Sign in to view profiles', 'err');
+    if (typeof openFostHubAuth === 'function') openFostHubAuth();
+  }
+  window.addEventListener('hashchange', () => {
+    const m = /^#profile-([A-Za-z0-9_-]+)$/.exec(location.hash); if (!m) return;
+    if (pfOpen && pfCur && lc(pfCur.id) === lc(m[1])) return;
+    pendingKey = m[1]; pendingReplace = true;
+    if (currentUser) tryPending(); else { authNudged = false; nudgeSignIn(); }
+  });
+  if (pendingKey) setTimeout(() => { if (currentUser) tryPending(); else nudgeSignIn(); }, 6000);   // session restore had its chance; still opens after sign-in
+  window.addEventListener('DOMContentLoaded', () => setTimeout(tryPending, 300));
 
   window.openProfile = openProfile;
   window.openMyProfile = function () {
