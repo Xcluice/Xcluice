@@ -144,3 +144,16 @@
 .pf-pw summary { cursor: pointer; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
 .pf-pw label, .pf-pw .pf-btn { margin-top: 8px; }
 .pf-editbox { max-height: 90vh; overflow-y: auto; }
+
+.xc-tick { display: inline-block; vertical-align: -2px; margin-left: 4px; flex-shrink: 0; }
+
+.pf-bio { margin-top: 8px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; color: rgba(255,255,255,.88); }
+.pf-site { display: inline-block; margin-top: 6px; font-size: 14px; font-weight: 700; color: #0FADFF; text-decoration: none; word-break: break-all; }
+.pf-site:hover { text-decoration: underline; }
+.pf-editbox textarea { border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; padding: 10px 12px; font-size: 16px; outline: none; resize: none; font-family: inherit; }
+.pf-editbox textarea:focus { border-color: #0FADFF; }
+.pf-editbox label small { font-weight: 600; opacity: .6; margin-left: 6px; }
+.pf-cfwrap { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.66); display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); }
+.pf-cfbox { width: 100%; max-width: 320px; background: #111; color: #fff; border: 1px solid rgba(255,255,255,.12); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.pf-cfbox p { margin: 0; font-size: 16px; font-weight: 700; text-align: center; }
+.pf-dangerfill { background: #e5484d; }

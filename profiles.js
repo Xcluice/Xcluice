@@ -20,12 +20,28 @@
     grid: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1"/></svg>',
     pencil: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
     out: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>',
+    share: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>',
     msg: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>',
     cam: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     img: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-8 9"/></svg>',
     play: '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
     file: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fe3ff" stroke-width="1.8" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
   };
+
+  /* ───────── styled confirm (replaces the browser pop-up) ───────── */
+  function xcConfirm(message, opts) {
+    opts = opts || {};
+    return new Promise((resolve) => {
+      const w = document.createElement('div'); w.className = 'pf-cfwrap';
+      w.innerHTML = `<div class="pf-cfbox" role="dialog" aria-modal="true"><p>${A(message)}</p><div class="pf-editbtns"><button class="pf-btn" data-c="no">${A(opts.cancel || 'Cancel')}</button><button class="pf-btn ${opts.danger ? 'pf-dangerfill' : 'primary'}" data-c="yes">${A(opts.ok || 'OK')}</button></div></div>`;
+      const done = (v) => { document.removeEventListener('keydown', onKey, true); w.remove(); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); done(false); } };
+      w.addEventListener('click', (e) => { if (e.target === w || e.target.closest('[data-c="no"]')) done(false); else if (e.target.closest('[data-c="yes"]')) done(true); });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(w); const b = w.querySelector('[data-c="yes"]'); if (b) b.focus();
+    });
+  }
+  window.xcConfirm = xcConfirm;
 
   /* ───────── data ───────── */
   let profiles = [], follows = [], stories = [];
@@ -38,7 +54,7 @@
     if (!r.ok) throw new Error(path);
     return r.json();
   }
-  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,' + (currentUser ? 'email,' : '') + 'avatar_url,role,created_at,verified,followers_override&limit=1000'); if (Array.isArray(d)) profiles = d; };
+  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,' + (currentUser ? 'email,' : '') + 'avatar_url,role,created_at,verified,followers_override,bio,website&limit=1000'); if (Array.isArray(d)) profiles = d; };
   // Only my own follow rows are loaded; other people's counts are fetched when their profile opens
   const counts = {};
   const loadFollows = async () => {
@@ -76,7 +92,7 @@
 
   /* ───────── profile resolution ───────── */
   function norm(p, extra) {
-    return Object.assign({ id: p.id || null, username: p.username || '', name: p.display_name || p.name || 'User', email: p.email || '', photo: p.avatar_url || p.photo || '', role: p.role || '', joined: p.created_at || null, verified: !!p.verified, fo: p.followers_override }, extra || {});
+    return Object.assign({ id: p.id || null, username: p.username || '', name: p.display_name || p.name || 'User', email: p.email || '', photo: p.avatar_url || p.photo || '', role: p.role || '', joined: p.created_at || null, verified: !!p.verified, fo: p.followers_override, bio: p.bio || '', website: p.website || '' }, extra || {});
   }
   function resolve(ref) {
     let p = null;
@@ -136,8 +152,8 @@
     const sub = [p.username ? '@' + p.username : '', joined].filter(Boolean).join(' · ');
     const isAdmin = lc(p.role) === 'admin';
     let actions = '';
-    if (me) actions = `<button class="pf-btn primary" data-a="addstory">${IC.cam} Add story</button><button class="pf-btn" data-a="photo">${IC.img} Change photo</button><button class="pf-btn pf-edit" data-a="edit" aria-label="Edit profile">${IC.pencil}</button>`;
-    else if (p.id) actions = `<button class="pf-btn ${following ? 'on' : 'primary'}" data-a="follow">${following ? 'Following' : 'Follow'}</button><button class="pf-btn" data-a="message">${IC.msg} Message</button>`;
+    if (me) actions = `<button class="pf-btn primary" data-a="addstory">${IC.cam} Add story</button><button class="pf-btn" data-a="photo">${IC.img} Change photo</button><button class="pf-btn pf-edit" data-a="edit" aria-label="Edit profile">${IC.pencil}</button><button class="pf-btn pf-edit" data-a="share" aria-label="Share profile">${IC.share}</button>`;
+    else if (p.id) actions = `<button class="pf-btn ${following ? 'on' : 'primary'}" data-a="follow">${following ? 'Following' : 'Follow'}</button><button class="pf-btn" data-a="message">${IC.msg} Message</button><button class="pf-btn pf-edit" data-a="share" aria-label="Share profile">${IC.share}</button>`;
     const signout = me ? `<div class="pf-actions" style="margin-top:8px"><button class="pf-btn pf-danger" data-a="signout">${IC.out} Sign out</button></div>` : '';
     const strip = ss.length ? `<div class="pf-strip"><div class="pf-label">Stories · 24h</div><div class="pf-strip-row">${ss.map((s, i) => {
       const seen = seenSet().has(s.id);
@@ -151,6 +167,7 @@
       </div>
       <div class="pf-name"><span>${esc(p.name)}</span>${p.verified ? TICK : ''}${isAdmin ? '<span class="pf-badge">ADMIN</span>' : (p.role && lc(p.role) !== 'member' ? `<span class="pf-badge">${esc(String(p.role).toUpperCase())}</span>` : '')}</div>
       <div class="pf-sub">${esc(sub)}</div>
+      ${p.bio ? `<div class="pf-bio">${esc(p.bio)}</div>` : ''}${p.website && /^https?:\/\//i.test(p.website) ? `<a class="pf-site" href="${A(p.website)}" target="_blank" rel="noopener noreferrer nofollow ugc">${esc(p.website.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, ''))}</a>` : ''}
       ${actions ? `<div class="pf-actions">${actions}</div>` : ''}${signout}
       ${strip}
       <div class="pf-tabs"><div>${IC.grid}</div></div>
@@ -217,6 +234,8 @@
     m.innerHTML = `<div class="pf-editbox"><div class="pf-edittitle">Edit profile</div>
       <label>Display name<input id="pfeName" maxlength="40" autocomplete="off" value="${A(p.name)}"></label>
       <label>Username<input id="pfeUser" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false" value="${A(p.username)}"></label>
+      <label>Bio <small id="pfeCount"></small><textarea id="pfeBio" maxlength="160" rows="3">${esc(p.bio)}</textarea></label>
+      <label>Website<input id="pfeSite" maxlength="200" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="example.com" value="${A(p.website)}"></label>
       <div class="pf-editerr" id="pfeErr"></div>
       <div class="pf-editbtns"><button class="pf-btn" data-e="cancel">Cancel</button><button class="pf-btn primary" data-e="save">Save</button></div>
       <details class="pf-pw"><summary>Change password</summary>
@@ -232,6 +251,7 @@
       else if (e.target.closest('[data-e="pw"]')) savePassword(m);
     });
     pfEl.appendChild(m);
+    const bi = $('pfeBio'), bc = $('pfeCount'); const cnt = () => { bc.textContent = bi.value.length + '/160'; }; bi.addEventListener('input', cnt); cnt();
     setTimeout(() => { const i = $('pfeName'); if (i) i.focus(); }, 50);
   }
   async function saveEdit(m) {
@@ -241,10 +261,18 @@
     if (!name) { err.textContent = 'Display name can’t be empty.'; return; }
     if (!/^[a-z0-9_]{3,20}$/.test(user)) { err.textContent = 'Username: 3–20 letters, numbers or _ only.'; return; }
     const old = { name: currentUser.display_name, user: currentUser.username };
-    if (name === old.name && user === (pfCur.username || old.user)) { m.remove(); return; }
+    const bio = $('pfeBio').value.trim().slice(0, 160);
+    let site = $('pfeSite').value.trim();
+    if (site) {
+      if (!/^https?:\/\//i.test(site)) site = 'https://' + site;
+      try { const u = new URL(site); if (!/^https?:$/.test(u.protocol) || !u.hostname.includes('.')) throw 0; site = u.href; }
+      catch { err.textContent = 'Enter a valid website, like example.com'; return; }
+      if (site.length > 200) { err.textContent = 'Website link is too long.'; return; }
+    }
+    if (name === old.name && user === (pfCur.username || old.user) && bio === (pfCur.bio || '') && site === (pfCur.website || '')) { m.remove(); return; }
     btn.disabled = true; err.textContent = '';
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }), body: JSON.stringify({ display_name: name, username: user }) });
+      const r = await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }), body: JSON.stringify({ display_name: name, username: user, bio: bio || null, website: site || null }) });
       if (r.status === 409) { err.textContent = 'That username is taken.'; btn.disabled = false; return; }
       const rows = r.ok ? await r.json() : null;
       if (!rows || !rows.length) throw new Error('save');
@@ -256,8 +284,8 @@
       ].filter(Boolean));
       currentUser.display_name = name; currentUser.username = user;
       try { chatUserName = name; } catch (e) {}
-      const pr = profiles.find((x) => x.id === currentUser.id); if (pr) { pr.display_name = name; pr.username = user; }
-      pfCur = norm(Object.assign({}, pr || { id: currentUser.id, email: currentUser.email, avatar_url: currentUser.avatar_url, role: currentUser.role }, { display_name: name, username: user }));
+      const pr = profiles.find((x) => x.id === currentUser.id); if (pr) { pr.display_name = name; pr.username = user; pr.bio = bio; pr.website = site; }
+      pfCur = norm(Object.assign({}, pr || { id: currentUser.id, email: currentUser.email, avatar_url: currentUser.avatar_url, role: currentUser.role }, { display_name: name, username: user, bio, website: site }));
       m.remove(); renderProfile();
       try { if (typeof updateUserUI === 'function') updateUserUI(); } catch (e) {}
       try { if (typeof loadPosts === 'function') loadPosts(false); } catch (e) {}
@@ -265,6 +293,15 @@
     } catch (e) { err.textContent = 'Couldn’t save. Try again.'; btn.disabled = false; }
   }
 
+  async function shareProfile() {
+    const p = pfCur; if (!p || !p.id) return;
+    const url = location.origin + location.pathname + '#profile-' + p.id;
+    try {
+      if (navigator.share) { await navigator.share({ title: p.name + ' on Xcluice', url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); if (typeof toast === 'function') toast('Profile link copied', 'ok'); }
+    catch { window.prompt('Copy this link', url); }
+  }
   async function savePassword(m) {
     const err = $('pfpErr'), btn = m.querySelector('[data-e="pw"]');
     const oldP = $('pfpOld').value, n1 = $('pfpNew').value, n2 = $('pfpNew2').value;
@@ -294,7 +331,8 @@
     else if (a === 'follow') toggleFollow();
     else if (a === 'addstory') pickStory();
     else if (a === 'edit') openEdit();
-    else if (a === 'signout') { if (confirm('Sign out of Xcluice?')) { closeProfile(() => { try { logOut({ stopPropagation() {} }); } catch (err) {} }); } }
+    else if (a === 'signout') { xcConfirm('Sign out of Xcluice?', { ok: 'Sign out', danger: true }).then((yes) => { if (yes) closeProfile(() => { try { logOut({ stopPropagation() {} }); } catch (err) {} }); }); }
+    else if (a === 'share') shareProfile();
     else if (a === 'photo') { if (typeof triggerAvatarUpload === 'function') triggerAvatarUpload(); }
     else if (a === 'avatar') { if (p && p.id && storiesOf(p.id).length) openStories([p.id], 0, 0); else if (p && currentUser && p.id === currentUser.id) pickStory(); }
     else if (a === 'story') { if (p && p.id) openStories([p.id], 0, +t.dataset.i || 0); }
@@ -422,7 +460,7 @@
   async function stDelete() {
     const s = st.list[st.i]; if (!s || !currentUser || s.uid !== currentUser.id) return;
     stPause(true);
-    if (!confirm('Delete this story?')) { stPause(false); return; }
+    if (!(await xcConfirm('Delete this story?', { ok: 'Delete', danger: true }))) { stPause(false); return; }
     try {
       const r = await fetch(`${SB_URL}/rest/v1/stories?id=eq.${s.id}`, { method: 'DELETE', headers: authHeaders() });
       if (!r.ok) throw new Error();

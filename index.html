@@ -1063,6 +1063,8 @@
         // Auth/session restore doesn't block the feed — runs in background
         loadSupabaseSdk().then(() => restoreSupabaseSession());
 
+        loadVerified();
+
         // Seed base history entry so back never leaves the app
         const knownFilters = [...document.querySelectorAll('[data-filter]')].map(n => n.dataset.filter);
         let rawHash = location.hash.replace('#', '') || 'all';
@@ -1437,7 +1439,7 @@
               <div class="pf-tap w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 overflow-hidden mt-0.5 xcluice-glow-sm" data-pf-email="${pfAttr(p.author_email)}" data-pf-name="${pfAttr(p.author_name)}" data-pf-photo="${pfAttr(p.author_photo)}" role="button" aria-label="View ${pfAttr(author)}'s profile">${avatarHtml}</div>
               <div class="flex-1 min-w-0">
                 <h3 class="font-semibold text-sm leading-snug line-clamp-2 text-slate-100">${esc(p.subject||p.title||'Untitled')}</h3>
-                <p class="text-[11px] text-violet-400/50 mt-1 truncate font-medium">${esc(author)} · ${timeAgo(p.created_at)}</p>
+                <p class="text-[11px] text-violet-400/50 mt-1 truncate font-medium">${esc(author)}${tickFor({ email: p.author_email })} · ${timeAgo(p.created_at)}</p>
               </div>
               <button class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-400/40 hover:text-violet-300 shrink-0 -mr-1 transition-colors" onclick="event.stopPropagation(); openPostMenu(event, '${p.id}')">
                 <i data-lucide="more-vertical" class="w-4 h-4"></i>
@@ -1497,7 +1499,7 @@
         history.pushState({ filter: activeFilter, viewer: id }, '', '#viewer-' + id);
         const author = p.author_name || p.title || 'Anonymous';
         el('viewerTitle').textContent  = p.subject || p.title || 'Post';
-        el('viewerAuthor').textContent = author;
+        el('viewerAuthor').innerHTML = esc(author) + tickFor({ email: p.author_email });
         el('viewerDate').textContent   = new Date(p.created_at).toLocaleString();
         el('viewerAvatar').innerHTML   = p.author_photo ? `<img src="${esc(p.author_photo)}" alt="${esc(author)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
         { const va = el('viewerAvatar'); va.classList.add('pf-tap'); va.dataset.pfEmail = p.author_email || ''; va.dataset.pfName = p.author_name || ''; va.dataset.pfPhoto = p.author_photo || ''; }
@@ -2103,7 +2105,7 @@
           return `<div class="snap-row${snapAnimateNext?' anim':''}" style="animation-delay:${Math.min(i,12)*35}ms" onclick='openDM(${JSON.stringify({uid:u.uid,name:u.name,email:u.email,photo:u.photo}).replace(/'/g,"&#39;")})'>
             <div class="snap-avw pf-tap" data-pf-uid="${attr(u.uid)}" data-pf-name="${attr(u.name)}" data-pf-email="${attr(u.email)}" data-pf-photo="${attr(u.photo)}">${avatar}${r.activeNow ? '<span class="snap-dot"></span>' : ''}</div>
             <div class="snap-body">
-              <div class="snap-name">${esc(name)}</div>
+              <div class="snap-name">${esc(name)}${tickFor({ uid: u.uid })}</div>
               <div class="snap-sub ${r.unread ? 'new' : ''}">${sub}</div>
             </div>
           </div>`;
@@ -2116,8 +2118,8 @@
         currentThread = person; snapMarkRead(person.uid);
         skipAnimOnce = true; forceScroll = true; renderedMsgIds = new Set(); msgHtmlCache = {}; clearReply();
         const bg = person.photo ? '#111' : snapColor(person.uid), ini = ((person.name||'?')[0]||'?').toUpperCase();
-        el('chatThreadName').textContent = person.name;
-        el('chatThreadNameMobile').textContent = person.name;
+        el('chatThreadName').innerHTML = esc(person.name) + tickFor({ uid: person.uid });
+        el('chatThreadNameMobile').innerHTML = esc(person.name) + tickFor({ uid: person.uid });
         ['chatThreadAvatar','chatThreadAvatarMobile'].forEach(id => { const a = el(id); a.style.background = bg; a.innerHTML = person.photo ? `<img src="${esc(person.photo)}" alt="">` : ini; });
         el('chatPlaceholder').classList.add('hidden');
         el('chatThreadView').classList.remove('hidden'); el('chatThreadView').classList.add('flex');
@@ -2578,6 +2580,22 @@
       }
       function pfAttr(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
       function el(id) { return document.getElementById(id); }
+      /* verified ticks: ids come from public profile flags, emails from an RPC that only lists authors who already posted */
+      const xcVerifiedIds = new Set(), xcVerifiedEmails = new Set();
+      const XC_TICK = '<svg class="xc-tick" width="14" height="14" viewBox="0 0 24 24" role="img" aria-label="Verified"><path fill="#0FADFF" d="M12 1.5l2.6 1.9 3.2-.1 1 3 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3-3.2-.1L12 22.5l-2.6-1.9-3.2.1-1-3-2.6-1.9 1-3.1-1-3.1 2.6-1.9 1-3 3.2.1z"/><path d="m7.8 12.3 3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      function tickFor(o) { o = o || {}; const em = String(o.email || '').toLowerCase(); return ((em && xcVerifiedEmails.has(em)) || (o.uid && xcVerifiedIds.has(o.uid))) ? XC_TICK : ''; }
+      async function loadVerified() {
+        try {
+          const h = { apikey: SB_KEY, 'Content-Type': 'application/json' };
+          const [a, b] = await Promise.all([
+            fetch(`${SB_URL}/rest/v1/fosthub_users?select=id&verified=eq.true`, { headers: h }).then(r => r.ok ? r.json() : []),
+            fetch(`${SB_URL}/rest/v1/rpc/verified_post_emails`, { method: 'POST', headers: h, body: '{}' }).then(r => r.ok ? r.json() : []),
+          ]);
+          a.forEach(x => xcVerifiedIds.add(x.id)); b.forEach(e => xcVerifiedEmails.add(String(e).toLowerCase()));
+          if (activeFilter !== 'people') renderGrid();
+          lastSnapHtml = '';
+        } catch {}
+      }
       function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
       function safeUrl(u) { return /^https?:\/\//i.test(String(u || '').trim()) ? esc(String(u).trim()) : ''; }
       function timeAgo(iso) {

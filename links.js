@@ -427,6 +427,7 @@
   /* ── Back-button guard: the first Back never leaves the site; a second Back within 2s does ── */
   (function backGuard() {
     if (history.state && history.state.guard) return;
+    if (!window.matchMedia('(pointer: coarse)').matches) return;   // desktop: normal back button, no prompt
     const base = history.state || { filter: 'all' };
     history.replaceState({ filter: '__guard', guard: true }, '', location.href);
     history.pushState(base, '', location.href);
