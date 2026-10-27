@@ -18,6 +18,7 @@
     plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
     grid: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1"/></svg>',
+    pencil: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
     msg: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>',
     cam: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     img: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-8 9"/></svg>',
@@ -115,7 +116,7 @@
     const sub = [p.username ? '@' + p.username : '', joined].filter(Boolean).join(' · ');
     const isAdmin = p.role === 'Admin';
     let actions = '';
-    if (me) actions = `<button class="pf-btn primary" data-a="addstory">${IC.cam} Add story</button><button class="pf-btn" data-a="photo">${IC.img} Change photo</button>`;
+    if (me) actions = `<button class="pf-btn primary" data-a="addstory">${IC.cam} Add story</button><button class="pf-btn" data-a="photo">${IC.img} Change photo</button><button class="pf-btn pf-edit" data-a="edit" aria-label="Edit profile">${IC.pencil}</button>`;
     else if (p.id) actions = `<button class="pf-btn ${following ? 'on' : 'primary'}" data-a="follow">${following ? 'Following' : 'Follow'}</button><button class="pf-btn" data-a="message">${IC.msg} Message</button>`;
     const strip = ss.length ? `<div class="pf-strip"><div class="pf-label">Stories · 24h</div><div class="pf-strip-row">${ss.map((s, i) => {
       const seen = seenSet().has(s.id);
@@ -184,12 +185,61 @@
     }
   }
 
+  /* ───────── edit profile (username + display name) ───────── */
+  function openEdit() {
+    const p = pfCur; if (!p || !currentUser || p.id !== currentUser.id) return;
+    let m = $('pfEdit'); if (m) m.remove();
+    m = document.createElement('div'); m.id = 'pfEdit'; m.className = 'pf-editwrap';
+    m.innerHTML = `<div class="pf-editbox"><div class="pf-edittitle">Edit profile</div>
+      <label>Display name<input id="pfeName" maxlength="40" autocomplete="off" value="${A(p.name)}"></label>
+      <label>Username<input id="pfeUser" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false" value="${A(p.username)}"></label>
+      <div class="pf-editerr" id="pfeErr"></div>
+      <div class="pf-editbtns"><button class="pf-btn" data-e="cancel">Cancel</button><button class="pf-btn primary" data-e="save">Save</button></div></div>`;
+    m.addEventListener('click', (e) => {
+      if (e.target === m || e.target.closest('[data-e="cancel"]')) m.remove();
+      else if (e.target.closest('[data-e="save"]')) saveEdit(m);
+    });
+    pfEl.appendChild(m);
+    setTimeout(() => { const i = $('pfeName'); if (i) i.focus(); }, 50);
+  }
+  async function saveEdit(m) {
+    const err = $('pfeErr'), btn = m.querySelector('[data-e="save"]');
+    const name = $('pfeName').value.trim().replace(/\s+/g, ' ');
+    const user = $('pfeUser').value.trim().toLowerCase().replace(/^@/, '');
+    if (!name) { err.textContent = 'Display name can’t be empty.'; return; }
+    if (!/^[a-z0-9_]{3,20}$/.test(user)) { err.textContent = 'Username: 3–20 letters, numbers or _ only.'; return; }
+    const old = { name: currentUser.display_name, user: currentUser.username };
+    if (name === old.name && user === (pfCur.username || old.user)) { m.remove(); return; }
+    btn.disabled = true; err.textContent = '';
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }), body: JSON.stringify({ display_name: name, username: user }) });
+      if (r.status === 409) { err.textContent = 'That username is taken.'; btn.disabled = false; return; }
+      const rows = r.ok ? await r.json() : null;
+      if (!rows || !rows.length) throw new Error('save');
+      const h = authHeaders({ 'Content-Type': 'application/json' });
+      const uid = encodeURIComponent(currentUser.id), em = encodeURIComponent(currentUser.email || '');
+      await Promise.allSettled([
+        fetch(`${SB_URL}/rest/v1/chat_users?uid=eq.${uid}`, { method: 'PATCH', headers: h, body: JSON.stringify({ name }) }),
+        em ? fetch(`${SB_URL}/rest/v1/homework?author_email=eq.${em}`, { method: 'PATCH', headers: h, body: JSON.stringify({ author_name: name }) }) : null,
+      ].filter(Boolean));
+      currentUser.display_name = name; currentUser.username = user;
+      try { chatUserName = name; } catch (e) {}
+      const pr = profiles.find((x) => x.id === currentUser.id); if (pr) { pr.display_name = name; pr.username = user; }
+      pfCur = norm(Object.assign({}, pr || { id: currentUser.id, email: currentUser.email, avatar_url: currentUser.avatar_url, role: currentUser.role }, { display_name: name, username: user }));
+      m.remove(); renderProfile();
+      try { if (typeof updateUserUI === 'function') updateUserUI(); } catch (e) {}
+      try { if (typeof loadPosts === 'function') loadPosts(false); } catch (e) {}
+      if (typeof toast === 'function') toast('Profile updated', 'ok');
+    } catch (e) { err.textContent = 'Couldn’t save. Try again.'; btn.disabled = false; }
+  }
+
   function onProfileClick(e) {
     const t = e.target.closest('[data-a]'); if (!t) return;
     const a = t.dataset.a, p = pfCur;
     if (a === 'back') closeProfile();
     else if (a === 'follow') toggleFollow();
     else if (a === 'addstory') pickStory();
+    else if (a === 'edit') openEdit();
     else if (a === 'photo') { if (typeof triggerAvatarUpload === 'function') triggerAvatarUpload(); }
     else if (a === 'avatar') { if (p && p.id && storiesOf(p.id).length) openStories([p.id], 0, 0); else if (p && currentUser && p.id === currentUser.id) pickStory(); }
     else if (a === 'story') { if (p && p.id) openStories([p.id], 0, +t.dataset.i || 0); }
