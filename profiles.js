@@ -39,7 +39,26 @@
     return r.json();
   }
   const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,' + (currentUser ? 'email,' : '') + 'avatar_url,role,created_at,verified,followers_override&limit=1000'); if (Array.isArray(d)) profiles = d; };
-  const loadFollows = async () => { const d = await api('follows?select=follower,following&limit=5000'); if (Array.isArray(d)) follows = d; };
+  // Only my own follow rows are loaded; other people's counts are fetched when their profile opens
+  const counts = {};
+  const loadFollows = async () => {
+    if (!currentUser) { follows = []; return; }
+    const u = encodeURIComponent(currentUser.id);
+    const d = await api(`follows?select=follower,following&or=(follower.eq.${u},following.eq.${u})&limit=1000`); if (Array.isArray(d)) follows = d;
+  };
+  async function countOf(query) {
+    const r = await fetch(`${SB_URL}/rest/v1/follows?select=follower&${query}`, { method: 'HEAD', headers: authHeaders({ Prefer: 'count=exact' }) });
+    const m = /\/(\d+)$/.exec(r.headers.get('content-range') || ''); return m ? +m[1] : null;
+  }
+  async function loadCounts(id) {
+    const e = encodeURIComponent(id);
+    const [f, g] = await Promise.all([countOf(`following=eq.${e}`), countOf(`follower=eq.${e}`)]);
+    counts[id] = { f, g };
+  }
+  async function loadUserPosts(p) {
+    if (!p.email || typeof mergePosts !== 'function') return;
+    try { mergePosts(await fetchPosts(`author_email=eq.${encodeURIComponent(p.email)}&limit=100`)); } catch {}
+  }
   const loadStories = async () => {
     const d = await api(`stories?select=id,uid,media_url,kind,caption,created_at,expires_at&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.asc&limit=500`);
     if (Array.isArray(d)) stories = d;
@@ -50,10 +69,10 @@
   const hasUnseen = (uid) => { const seen = seenSet(); return storiesOf(uid).some((s) => !seen.has(s.id)); };
   const ringClass = (uid) => (!storiesOf(uid).length ? '' : hasUnseen(uid) ? 'unseen' : 'seen');
   const isFollowing = (id) => !!currentUser && follows.some((f) => f.follower === currentUser.id && f.following === id);
-  const followers = (id) => { const o = (profiles.find((x) => x.id === id) || {}).followers_override; return o != null ? Number(o) : follows.filter((f) => f.following === id).length; };
+  const followers = (id) => { const o = (profiles.find((x) => x.id === id) || {}).followers_override; if (o != null) return Number(o); const c = counts[id]; return c && c.f != null ? c.f : follows.filter((f) => f.following === id).length; };
   const fmtN = (n) => n >= 1e6 ? (n / 1e6).toFixed(n % 1e6 ? 1 : 0).replace(/\.0$/, '') + 'M' : n >= 1e4 ? (n / 1e3).toFixed(n % 1e3 ? 1 : 0).replace(/\.0$/, '') + 'K' : String(n);
   const TICK = '<svg class="pf-tick" width="18" height="18" viewBox="0 0 24 24" aria-label="Verified"><path fill="#0FADFF" d="M12 1.5l2.6 1.9 3.2-.1 1 3 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3-3.2-.1L12 22.5l-2.6-1.9-3.2.1-1-3-2.6-1.9 1-3.1-1-3.1 2.6-1.9 1-3 3.2.1z"/><path d="m7.8 12.3 3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const followingCount = (id) => follows.filter((f) => f.follower === id).length;
+  const followingCount = (id) => { const c = counts[id]; return c && c.g != null ? c.g : follows.filter((f) => f.follower === id).length; };
 
   /* ───────── profile resolution ───────── */
   function norm(p, extra) {
@@ -115,7 +134,7 @@
     $('pfTitle').textContent = p.username ? '@' + p.username : p.name;
     const joined = p.joined ? 'Joined ' + new Date(p.joined).toLocaleDateString([], { month: 'long', year: 'numeric' }) : '';
     const sub = [p.username ? '@' + p.username : '', joined].filter(Boolean).join(' · ');
-    const isAdmin = p.role === 'Admin';
+    const isAdmin = lc(p.role) === 'admin';
     let actions = '';
     if (me) actions = `<button class="pf-btn primary" data-a="addstory">${IC.cam} Add story</button><button class="pf-btn" data-a="photo">${IC.img} Change photo</button><button class="pf-btn pf-edit" data-a="edit" aria-label="Edit profile">${IC.pencil}</button>`;
     else if (p.id) actions = `<button class="pf-btn ${following ? 'on' : 'primary'}" data-a="follow">${following ? 'Following' : 'Follow'}</button><button class="pf-btn" data-a="message">${IC.msg} Message</button>`;
@@ -130,7 +149,7 @@
         <div class="pf-avwrap"><div class="pf-ring ${ring}" data-a="avatar"><div class="pf-av" style="background:${avatarBg(p)}">${avatarInner(p)}</div></div>${me ? `<button class="pf-plus" data-a="addstory" aria-label="Add story">${IC.plus}</button>` : ''}</div>
         <div class="pf-stats"><div><b>${posts.length}</b><span>Posts</span></div><div><b>${p.id ? fmtN(followers(p.id)) : 0}</b><span>Followers</span></div><div><b>${p.id ? followingCount(p.id) : 0}</b><span>Following</span></div></div>
       </div>
-      <div class="pf-name"><span>${esc(p.name)}</span>${p.verified ? TICK : ''}${isAdmin ? '<span class="pf-badge">ADMIN</span>' : (p.role && p.role !== 'Member' && p.role !== 'member' ? `<span class="pf-badge">${esc(String(p.role).toUpperCase())}</span>` : '')}</div>
+      <div class="pf-name"><span>${esc(p.name)}</span>${p.verified ? TICK : ''}${isAdmin ? '<span class="pf-badge">ADMIN</span>' : (p.role && lc(p.role) !== 'member' ? `<span class="pf-badge">${esc(String(p.role).toUpperCase())}</span>` : '')}</div>
       <div class="pf-sub">${esc(sub)}</div>
       ${actions ? `<div class="pf-actions">${actions}</div>` : ''}${signout}
       ${strip}
@@ -156,6 +175,7 @@
     await loadAll();
     if (token !== openProfile.t || !pfOpen) return;
     pfCur = resolve(ref); renderProfile(); refreshTray();
+    if (pfCur.id) { await Promise.allSettled([loadCounts(pfCur.id), loadUserPosts(pfCur)]); if (token === openProfile.t && pfOpen) renderProfile(); }
   }
   function doCloseProfile() {
     if (!pfOpen) return; pfOpen = false; pfCur = null; openProfile.t = (openProfile.t || 0) + 1;
@@ -174,6 +194,7 @@
     const was = isFollowing(p.id);
     if (was) follows = follows.filter((f) => !(f.follower === currentUser.id && f.following === p.id));
     else follows.push({ follower: currentUser.id, following: p.id });
+    if (counts[p.id] && counts[p.id].f != null) counts[p.id].f += was ? -1 : 1;
     renderProfile(); refreshTray();
     try {
       const r = was
@@ -183,6 +204,7 @@
     } catch {
       if (was) follows.push({ follower: currentUser.id, following: p.id });
       else follows = follows.filter((f) => !(f.follower === currentUser.id && f.following === p.id));
+      if (counts[p.id] && counts[p.id].f != null) counts[p.id].f += was ? 1 : -1;
       renderProfile(); toast('Couldn’t update follow', 'err');
     }
   }

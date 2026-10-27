@@ -1316,17 +1316,44 @@
       }
 
       /* ═══ POSTS & FEED ═══ */
+      const POST_PAGE = 24;
+      let postsCursor = null, postsMore = false, postsPaged = 0, postsBusy = false;
+      async function fetchPosts(query) {
+        const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?order=created_at.desc&${query}`, { headers:{ apikey:SB_KEY } });
+        if (!r.ok) throw new Error();
+        return r.json();
+      }
+      function mergePosts(rows) {
+        const seen = new Set(allPosts.map(p => String(p.id)));
+        const add = rows.filter(p => !seen.has(String(p.id)));
+        if (add.length) allPosts = allPosts.concat(add).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        return add.length;
+      }
       async function loadPosts(showSpinner=false) {
         if (showSpinner) el('grid').innerHTML = '<div class="flex justify-center py-20"><div class="spinner" style="width:36px;height:36px;border-width:3px;"></div></div>';
         try {
-          const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?order=created_at.desc`, { headers:{ apikey:SB_KEY } });
-          if (!r.ok) throw new Error();
-          allPosts = await r.json();
+          const limit = Math.max(POST_PAGE, postsPaged);   // a refresh keeps the pages already loaded
+          const rows = await fetchPosts(`limit=${limit}`);
+          allPosts = rows;
+          postsPaged = rows.length; postsMore = rows.length === limit;
+          postsCursor = rows.length ? rows[rows.length - 1].created_at : null;
           if (activeFilter !== 'people') renderGrid();
         } catch {
           if (allPosts.length === 0 && activeFilter !== 'people')
             el('grid').innerHTML = emptyState('Unable to load posts. Check your connection.');
         }
+      }
+      async function loadMorePosts(all = false) {
+        if (postsBusy || !postsMore || !postsCursor) return;
+        postsBusy = true;
+        try {
+          const rows = await fetchPosts(`created_at=lt.${encodeURIComponent(postsCursor)}` + (all ? '' : `&limit=${POST_PAGE}`));
+          mergePosts(rows);
+          postsPaged += rows.length;
+          postsMore = !all && rows.length === POST_PAGE;
+          if (rows.length) postsCursor = rows[rows.length - 1].created_at;
+        } catch { toast('Couldn’t load more posts', 'err'); }
+        finally { postsBusy = false; if (activeFilter !== 'people') renderGrid(); }
       }
 
       function getFileType(url) {
@@ -1350,6 +1377,8 @@
       };
 
       function renderGrid() {
+        // Search and type filters run on loaded posts, so pull in the rest first
+        if (postsMore && !postsBusy && (searchQuery || ['media','docs','html'].includes(activeFilter))) loadMorePosts(true);
         let posts = allPosts;
         if (activeFilter !== 'all') {
           posts = posts.filter(p => {
@@ -1366,7 +1395,7 @@
         el('feedSubtitle').textContent = meta.subtitle;
         const grid = el('grid');
         if (!posts.length) { grid.innerHTML = emptyState('No posts here yet.'); return; }
-        grid.innerHTML = posts.map(p => cardHTML(p)).join('');
+        grid.innerHTML = posts.map(p => cardHTML(p)).join('') + (postsMore && !searchQuery && activeFilter === 'all' ? `<div class="flex justify-center py-6"><button onclick="loadMorePosts()" class="px-5 py-2.5 rounded-xl text-sm font-semibold btn-primary text-white">${postsBusy ? 'Loading…' : 'Load more'}</button></div>` : '');
         refreshIcons();
         hydrateHtmlThumbs();
         hydratePdfThumbs();
