@@ -36,7 +36,7 @@
     if (!r.ok) throw new Error(path);
     return r.json();
   }
-  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,email,avatar_url,role,created_at,verified,followers_override&limit=1000'); if (Array.isArray(d)) profiles = d; };
+  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,' + (currentUser ? 'email,' : '') + 'avatar_url,role,created_at,verified,followers_override&limit=1000'); if (Array.isArray(d)) profiles = d; };
   const loadFollows = async () => { const d = await api('follows?select=follower,following&limit=5000'); if (Array.isArray(d)) follows = d; };
   const loadStories = async () => {
     const d = await api(`stories?select=id,uid,media_url,kind,caption,created_at,expires_at&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.asc&limit=500`);

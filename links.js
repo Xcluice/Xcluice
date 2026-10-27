@@ -46,7 +46,7 @@
       h = h.replace(THUMB_RE, (m, a, b) => a + img + b);
     }
     if (p.link_url) {
-      const chip = '<a href="' + esc(p.link_url) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="absolute bottom-2 left-2 max-w-[60%] truncate text-[10px] font-semibold rounded-full px-2 py-0.5 text-cyan-200 border border-cyan-500/30" style="background:rgba(4,2,12,0.7);backdrop-filter:blur(8px)">🔗 ' + esc(host(p.link_url)) + '</a>';
+      const chip = '<a href="' + safeUrl(p.link_url) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="absolute bottom-2 left-2 max-w-[60%] truncate text-[10px] font-semibold rounded-full px-2 py-0.5 text-cyan-200 border border-cyan-500/30" style="background:rgba(4,2,12,0.7);backdrop-filter:blur(8px)">🔗 ' + esc(host(p.link_url)) + '</a>';
       h = h.replace('<span class="absolute bottom-2 right-2', chip + '<span class="absolute bottom-2 right-2');
       if (isShotPost(p)) h = h.replace('>Preview</span>', '>Link</span>');
     } else if (isLinkUrl(p.file_url)) {
