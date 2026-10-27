@@ -149,7 +149,7 @@
     pfCur = null; $('pfBody').innerHTML = skeleton(); $('pfTitle').textContent = '';
     if (!wasOpen) {
       pfEl.classList.remove('hidden', 'out'); pfEl.classList.remove('in'); void pfEl.offsetWidth; pfEl.classList.add('in');
-      history.pushState({ profile: true }, '', '#profile-' + (lc(ref.name || ref.uid || 'user').replace(/[^a-z0-9]+/g, '-').slice(0, 40)));
+      history.pushState({ profile: true }, '', '#profile-' + (lc(ref.uid || ref.name || 'user').replace(/[^a-z0-9]+/g, '-').slice(0, 40)));
     }
     pfOpen = true; $('pfScroll').scrollTop = 0;
     const token = (openProfile.t = (openProfile.t || 0) + 1);
@@ -541,6 +541,23 @@
   }
   setInterval(() => { if (currentUser && !document.hidden) loadStories().then(() => { refreshTray(); }).catch(() => {}); }, 60000);
   window.addEventListener('DOMContentLoaded', () => setTimeout(() => { if (currentUser) loadAll().then(refreshTray); else refreshTray(); }, 1500));
+
+  // Deep link: /#profile-<user id | username>
+  (function openFromLink() {
+    const key = window.__xcPendingProfile; if (!key) return; window.__xcPendingProfile = null;
+    const k = lc(key); let tries = 0;
+    const iv = setInterval(async () => {
+      if (!currentUser) {
+        if (++tries > 40) { clearInterval(iv); if (typeof toast === 'function') toast('Sign in to view profiles', 'err'); if (typeof openFostHubAuth === 'function') openFostHubAuth(); }
+        return;
+      }
+      clearInterval(iv);
+      try { await loadProfiles(); } catch {}
+      const slug = (n) => lc(n).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const p = profiles.find((x) => lc(x.id) === k || lc(x.username) === k || slug(x.display_name) === k);
+      if (p) openProfile({ uid: p.id }); else if (typeof toast === 'function') toast('Couldn’t find that profile', 'err');
+    }, 250);
+  })();
 
   window.openProfile = openProfile;
   window.openMyProfile = function () {

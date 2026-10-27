@@ -1025,6 +1025,7 @@
       function refreshIcons() { if (typeof lucide !== 'undefined') lucide.createIcons(); }
       refreshIcons();
 
+      window.__xcPendingProfile = ((/^#profile-([A-Za-z0-9_-]+)$/.exec(location.hash) || [])[1]) || null;   // deep link, opened by profiles.js once signed in
       const SB_URL = 'https://nzolsmouyulzqeaocejm.supabase.co';
       const SB_KEY = 'sb_publishable_EGX3jDjRh5LiXjdTw2AXxA_e1YIaP4Q';
       const BUCKET = 'homework-files';
@@ -1063,8 +1064,10 @@
         loadSupabaseSdk().then(() => restoreSupabaseSession());
 
         // Seed base history entry so back never leaves the app
-        const rawHash = location.hash.replace('#', '') || 'all';
-        const hashFilter = rawHash.split('/')[0] || 'all';   // "people/thread-momin" -> "people"
+        const knownFilters = [...document.querySelectorAll('[data-filter]')].map(n => n.dataset.filter);
+        let rawHash = location.hash.replace('#', '') || 'all';
+        let hashFilter = rawHash.split('/')[0] || 'all';   // "people/thread-momin" -> "people"
+        if (!knownFilters.includes(hashFilter)) { hashFilter = 'all'; rawHash = 'all'; }   // #profile-…, #viewer-…, junk -> home feed
         history.replaceState({ filter: hashFilter }, '', '#' + rawHash);
         if (hashFilter !== 'all') setFilter(hashFilter, false);
 
