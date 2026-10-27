@@ -36,7 +36,7 @@
     if (!r.ok) throw new Error(path);
     return r.json();
   }
-  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,email,avatar_url,role,created_at&limit=1000'); if (Array.isArray(d)) profiles = d; };
+  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,email,avatar_url,role,created_at,verified,followers_override&limit=1000'); if (Array.isArray(d)) profiles = d; };
   const loadFollows = async () => { const d = await api('follows?select=follower,following&limit=5000'); if (Array.isArray(d)) follows = d; };
   const loadStories = async () => {
     const d = await api(`stories?select=id,uid,media_url,kind,caption,created_at,expires_at&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.asc&limit=500`);
@@ -48,12 +48,14 @@
   const hasUnseen = (uid) => { const seen = seenSet(); return storiesOf(uid).some((s) => !seen.has(s.id)); };
   const ringClass = (uid) => (!storiesOf(uid).length ? '' : hasUnseen(uid) ? 'unseen' : 'seen');
   const isFollowing = (id) => !!currentUser && follows.some((f) => f.follower === currentUser.id && f.following === id);
-  const followers = (id) => follows.filter((f) => f.following === id).length;
+  const followers = (id) => { const o = (profiles.find((x) => x.id === id) || {}).followers_override; return o != null ? Number(o) : follows.filter((f) => f.following === id).length; };
+  const fmtN = (n) => n >= 1e6 ? (n / 1e6).toFixed(n % 1e6 ? 1 : 0).replace(/\.0$/, '') + 'M' : n >= 1e4 ? (n / 1e3).toFixed(n % 1e3 ? 1 : 0).replace(/\.0$/, '') + 'K' : String(n);
+  const TICK = '<svg class="pf-tick" width="18" height="18" viewBox="0 0 24 24" aria-label="Verified"><path fill="#0FADFF" d="M12 1.5l2.6 1.9 3.2-.1 1 3 2.6 1.9-1 3.1 1 3.1-2.6 1.9-1 3-3.2-.1L12 22.5l-2.6-1.9-3.2.1-1-3-2.6-1.9 1-3.1-1-3.1 2.6-1.9 1-3 3.2.1z"/><path d="m7.8 12.3 3 3 5.6-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const followingCount = (id) => follows.filter((f) => f.follower === id).length;
 
   /* ───────── profile resolution ───────── */
   function norm(p, extra) {
-    return Object.assign({ id: p.id || null, username: p.username || '', name: p.display_name || p.name || 'User', email: p.email || '', photo: p.avatar_url || p.photo || '', role: p.role || '', joined: p.created_at || null }, extra || {});
+    return Object.assign({ id: p.id || null, username: p.username || '', name: p.display_name || p.name || 'User', email: p.email || '', photo: p.avatar_url || p.photo || '', role: p.role || '', joined: p.created_at || null, verified: !!p.verified, fo: p.followers_override }, extra || {});
   }
   function resolve(ref) {
     let p = null;
@@ -123,9 +125,9 @@
     $('pfBody').innerHTML = `
       <div class="pf-head">
         <div class="pf-avwrap"><div class="pf-ring ${ring}" data-a="avatar"><div class="pf-av" style="background:${avatarBg(p)}">${avatarInner(p)}</div></div>${me ? `<button class="pf-plus" data-a="addstory" aria-label="Add story">${IC.plus}</button>` : ''}</div>
-        <div class="pf-stats"><div><b>${posts.length}</b><span>Posts</span></div><div><b>${p.id ? followers(p.id) : 0}</b><span>Followers</span></div><div><b>${p.id ? followingCount(p.id) : 0}</b><span>Following</span></div></div>
+        <div class="pf-stats"><div><b>${posts.length}</b><span>Posts</span></div><div><b>${p.id ? fmtN(followers(p.id)) : 0}</b><span>Followers</span></div><div><b>${p.id ? followingCount(p.id) : 0}</b><span>Following</span></div></div>
       </div>
-      <div class="pf-name"><span>${esc(p.name)}</span>${isAdmin ? '<span class="pf-badge">ADMIN</span>' : (p.role && p.role !== 'Member' && p.role !== 'member' ? `<span class="pf-badge">${esc(String(p.role).toUpperCase())}</span>` : '')}</div>
+      <div class="pf-name"><span>${esc(p.name)}</span>${p.verified ? TICK : ''}${isAdmin ? '<span class="pf-badge">ADMIN</span>' : (p.role && p.role !== 'Member' && p.role !== 'member' ? `<span class="pf-badge">${esc(String(p.role).toUpperCase())}</span>` : '')}</div>
       <div class="pf-sub">${esc(sub)}</div>
       ${actions ? `<div class="pf-actions">${actions}</div>` : ''}
       ${strip}

@@ -127,3 +127,4 @@
 @media (prefers-reduced-motion: reduce) {
   .pf-ring.unseen, .pf-ring.unseen > .pf-av, .pf-sk, .snap-dot, .sk, .snap-typing i { animation: none !important; }
 }
+.pf-tick { flex-shrink: 0; margin-left: 5px; vertical-align: -3px; }
