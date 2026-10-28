@@ -2,6 +2,7 @@
    Loaded AFTER the main script in index.html (just before </body>). */
 (function () {
   let selectedThumb = null, existingThumb = null, editingPost = null;
+  let thumbMode = 'image', imageThumbSaved = null, textThumbFile = null, textRenderId = 0, textTimer = null;
   const isLinkUrl = (u) => !!u && /^https?:\/\//i.test(u) && !u.startsWith(SB_URL + '/storage/');
   const postLink = (p) => (p && (p.link_url || (isLinkUrl(p.file_url) ? p.file_url : null))) || null;
   const isShotPost = (p) => !!p.link_url && /\/link_\d+_/.test(p.file_url || '');
@@ -102,21 +103,14 @@
     }
   };
 
-  /* ── Clickable links in chat messages ── */
+  /* ── Clickable links in chat messages (Snapchat-style bubbles) ── */
   const _renderChatMessages = renderChatMessages;
   window.renderChatMessages = function () {
-    _renderChatMessages();
-    ['chatMessages', 'chatMessagesMobile'].forEach((id) => {
-      const box = document.getElementById(id);
-      if (!box) return;
-      box.querySelectorAll('p.leading-relaxed').forEach((p) => { p.innerHTML = linkify(p.textContent); });
-      // tag each bubble with its message id (same order/filter as the original render)
-      const vis = chatMessages.filter((m) => {
-        if (!currentThread) return !m.to_uid;
-        return (m.uid === chatUserId && m.to_uid === currentThread.uid) || (m.uid === currentThread.uid && m.to_uid === chatUserId);
-      });
-      box.querySelectorAll('.chat-bubble').forEach((b, i) => { if (vis[i]) b.dataset.mid = vis[i].id; });
-      box.scrollTop = box.scrollHeight;
+    _renderChatMessages.apply(this, arguments);
+    document.querySelectorAll('.snap-text').forEach((n) => {
+      if (n.dataset.linked === n.textContent) return;
+      n.innerHTML = linkify(n.textContent);
+      n.dataset.linked = n.textContent;
     });
   };
 
@@ -149,15 +143,22 @@
     // Optional thumbnail picker, shown when the chosen file isn't an image
     const row2 = document.createElement('div');
     row2.id = 'thumbRow';
-    row2.className = 'hidden mt-3 flex items-center gap-3 rounded-xl p-3';
+    row2.className = 'hidden mt-3 flex flex-wrap items-center gap-3 rounded-xl p-3';
     row2.style.cssText = 'border:1px solid rgba(139,92,246,0.25);background:rgba(139,92,246,0.04)';
     row2.innerHTML =
       '<div id="thumbPreview" class="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden shrink-0" style="background:rgba(139,92,246,0.12)"><i data-lucide="image" class="w-5 h-5 text-violet-400/60"></i></div>' +
-      '<div class="flex-1 min-w-0"><p class="text-xs font-semibold text-violet-300/80">Thumbnail <span class="font-normal text-violet-400/40">(optional)</span></p>' +
+      '<div id="thumbTabs" class="basis-full flex gap-2" style="order:-1">' +
+      '<button type="button" data-mode="image" class="cat-pill active text-xs font-semibold px-3 py-1.5">Upload image</button>' +
+      '<button type="button" data-mode="text" class="cat-pill text-xs font-semibold px-3 py-1.5">Write text</button></div>' +
+      '<div id="thumbInfo" class="flex-1 min-w-0"><p class="text-xs font-semibold text-violet-300/80">Thumbnail <span class="font-normal text-violet-400/40">(optional)</span></p>' +
       '<p id="thumbName" class="text-[11px] text-violet-400/40 truncate">Add a cover image for this file</p></div>' +
       '<button type="button" id="thumbBtn" class="text-xs font-semibold text-violet-300 rounded-lg px-2.5 py-1.5 hover:bg-violet-900/30" style="border:1px solid rgba(139,92,246,0.25)">Choose</button>' +
-      '<input type="file" id="thumbInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">';
+      '<input type="file" id="thumbInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">' +
+      '<div id="thumbTextBox" class="hidden basis-full"><canvas id="thumbCanvas" class="w-full rounded-xl" style="aspect-ratio:16/9;background:#171717"></canvas>' +
+      '<textarea id="thumbText" rows="2" maxlength="90" autocomplete="off" autocorrect="off" data-lpignore="true" placeholder="Type your thumbnail text…" class="x-input w-full mt-2 px-3.5 py-2.5 rounded-xl text-sm" style="resize:none"></textarea></div>';
     input.insertAdjacentElement('afterend', row2);
+    row2.querySelectorAll('#thumbTabs button').forEach((b) => b.addEventListener('click', () => setThumbMode(b.dataset.mode)));
+    document.getElementById('thumbText').addEventListener('input', () => { clearTimeout(textTimer); textTimer = setTimeout(renderTextThumb, 150); });
     document.getElementById('thumbBtn').addEventListener('click', () => {
       if (selectedThumb || existingThumb) { existingThumb = null; setThumb(null); } else document.getElementById('thumbInput').click();
     });
@@ -171,6 +172,73 @@
       setThumb(f);
     });
     refreshIcons();
+  }
+
+  /* ── Text thumbnail: bold condensed caps on a dark card ── */
+  const fontLink = document.createElement('link');
+  fontLink.rel = 'stylesheet';
+  fontLink.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap';
+  document.head.appendChild(fontLink);
+
+  function wrapLines(c, text, maxW) {
+    const words = text.split(/\s+/).filter(Boolean), lines = [];
+    let line = '';
+    words.forEach((w) => {
+      const t = line ? line + ' ' + w : w;
+      if (line && c.measureText(t).width > maxW) { lines.push(line); line = w; } else line = t;
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  async function renderTextThumb() {
+    const ta = document.getElementById('thumbText'), cv = document.getElementById('thumbCanvas');
+    if (!ta || !cv) return;
+    const id = ++textRenderId;
+    const text = ta.value.trim().toUpperCase();
+    const W = 1280, H = 720;
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#171717'; c.fillRect(0, 0, W, H);
+    if (!text) { textThumbFile = null; if (thumbMode === 'text') selectedThumb = null; return; }
+    try { await document.fonts.load('120px "Bebas Neue"'); } catch (e) {}
+    if (id !== textRenderId) return;
+    const fam = '"Bebas Neue", Impact, "Arial Narrow", sans-serif';
+    const maxW = W * 0.86, maxH = H * 0.72;
+    let size = 280, lines = [];
+    for (; size >= 48; size -= 4) {
+      c.font = size + 'px ' + fam;
+      lines = wrapLines(c, text, maxW);
+      if (lines.length * size <= maxH && lines.every((l) => c.measureText(l).width <= maxW)) break;
+    }
+    c.font = size + 'px ' + fam;
+    if ('letterSpacing' in c) c.letterSpacing = Math.round(size * 0.015) + 'px';
+    c.fillStyle = '#f5f5f5'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const y0 = H / 2 - (lines.length * size) / 2 + size / 2;
+    lines.forEach((l, i) => c.fillText(l, W / 2, y0 + i * size));
+    cv.toBlob((blob) => {
+      if (id !== textRenderId || !blob) return;
+      textThumbFile = new File([blob], 'text-thumb.png', { type: 'image/png' });
+      if (thumbMode === 'text') selectedThumb = textThumbFile;
+    }, 'image/png');
+  }
+
+  function setThumbMode(mode) {
+    const text = mode === 'text';
+    if (text && thumbMode !== 'text') imageThumbSaved = (selectedThumb && selectedThumb !== textThumbFile) ? selectedThumb : null;
+    thumbMode = mode;
+    ['thumbPreview', 'thumbInfo', 'thumbBtn'].forEach((id) => document.getElementById(id)?.classList.toggle('hidden', text));
+    document.getElementById('thumbTextBox')?.classList.toggle('hidden', !text);
+    document.querySelectorAll('#thumbTabs .cat-pill').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+    if (text) { selectedThumb = textThumbFile; renderTextThumb(); }
+    else selectedThumb = imageThumbSaved;
+  }
+
+  function resetThumbText() {
+    textRenderId++; textThumbFile = null; imageThumbSaved = null;
+    const ta = document.getElementById('thumbText'); if (ta) ta.value = '';
+    setThumbMode('image');
+    selectedThumb = null;
   }
 
   function setThumb(f) {
@@ -196,7 +264,7 @@
     if (!row) return;
     const show = !!selectedFile && !isImageName(selectedFile.name);
     row.classList.toggle('hidden', !show);
-    if (!show && selectedThumb) setThumb(null);
+    if (!show) { if (selectedThumb) setThumb(null); resetThumbText(); }
   }
   const _handleFile = handleFile;
   window.handleFile = function (file) { _handleFile(file); updateThumbRow(); };
@@ -205,6 +273,7 @@
   window.resetUploadForm = function () {
     _resetUploadForm();
     setThumb(null);
+    resetThumbText();
     exitEditMode();
     document.getElementById('thumbRow')?.classList.add('hidden');
     const i = document.getElementById('inputLink');
