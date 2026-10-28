@@ -277,10 +277,10 @@
     if (name === old.name && user === (pfCur.username || old.user) && bio === (pfCur.bio || '') && site === (pfCur.website || '')) { m.remove(); return; }
     btn.disabled = true; err.textContent = '';
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }), body: JSON.stringify({ display_name: name, username: user, bio: bio || null, website: site || null }) });
+      const r = await fetch(`${SB_URL}/rest/v1/fosthub_users?id=eq.${currentUser.id}&select=id,username,display_name,bio,website`, { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }), body: JSON.stringify({ display_name: name, username: user, bio: bio || null, website: site || null }) });
       if (r.status === 409) { err.textContent = 'That username is taken.'; btn.disabled = false; return; }
       const rows = r.ok ? await r.json() : null;
-      if (!rows || !rows.length) throw new Error('save');
+      if (!rows || !rows.length) { try { console.error('Profile save failed', r.status); } catch (e) {} throw new Error('save'); }
       const h = authHeaders({ 'Content-Type': 'application/json' });
       const uid = encodeURIComponent(currentUser.id), em = encodeURIComponent(currentUser.email || '');
       await Promise.allSettled([
