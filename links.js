@@ -56,6 +56,8 @@
         '<span class="text-xs text-cyan-300/80 font-semibold max-w-full truncate">' + esc(host(p.file_url)) + '</span></div>';
       h = h.replace(THUMB_RE, (m, a, b) => a + thumb + b);
     }
+    // Nothing to show in the 3-dot menu for this viewer (not owner/admin, and no file to download) -> no button
+    if (!canEdit(p) && !hasRealFile(p)) h = h.replace(/<button[^>]*openPostMenu[\s\S]*?<\/button>/, '');
     if (p.pinned) h = h.replace(/(<div class="w-full aspect-video[^>]*>)/, '$1<span class="absolute top-2 left-2 z-10 text-[10px] font-bold rounded-full px-2 py-0.5 text-white" style="background:rgba(8,5,20,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">📌 Pinned</span>');
     return h;
   };
