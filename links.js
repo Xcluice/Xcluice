@@ -56,6 +56,7 @@
         '<span class="text-xs text-cyan-300/80 font-semibold max-w-full truncate">' + esc(host(p.file_url)) + '</span></div>';
       h = h.replace(THUMB_RE, (m, a, b) => a + thumb + b);
     }
+    if (p.pinned) h = h.replace(/(<div class="w-full aspect-video[^>]*>)/, '$1<span class="absolute top-2 left-2 z-10 text-[10px] font-bold rounded-full px-2 py-0.5 text-white" style="background:rgba(8,5,20,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">📌 Pinned</span>');
     return h;
   };
 
@@ -91,16 +92,28 @@
         '<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors" onclick="openEdit(\'' + p.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i> Edit</button>');
       refreshIcons();
     }
-    if (p && linkOnly(p)) {
-      const a = document.querySelector('#postMenu a[download]');
-      if (a) {
-        a.href = postLink(p);
-        a.removeAttribute('download');
-        a.rel = 'noopener noreferrer';
-        a.innerHTML = '<i data-lucide="external-link" class="w-4 h-4"></i> Open link';
-        refreshIcons();
-      }
+    if (p && linkOnly(p)) document.querySelector('#postMenu a[download]')?.remove();
+    if (p && currentUser && (currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin')) {
+      document.getElementById('postMenu').insertAdjacentHTML('afterbegin',
+        '<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-amber-300 hover:bg-violet-900/30 transition-colors" onclick="togglePin(\'' + p.id + '\')"><i data-lucide="pin" class="w-4 h-4"></i> ' + (p.pinned ? 'Unpin post' : 'Pin post') + '</button>');
+      refreshIcons();
     }
+  };
+
+  window.togglePin = async (id) => {
+    closePostMenu();
+    const p = allPosts.find((x) => String(x.id) === String(id));
+    if (!p) return;
+    const next = !p.pinned;
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+        method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+        body: JSON.stringify({ pinned: next })
+      });
+      const rows = r.ok ? await r.json() : [];
+      if (!rows.length) throw new Error();
+      toast(next ? 'Post pinned' : 'Post unpinned', 'ok'); loadPosts();
+    } catch (e) { toast('Couldn’t update pin', 'err'); }
   };
 
   /* ── Clickable links in chat messages (Snapchat-style bubbles) ── */
@@ -224,6 +237,30 @@
     }, 'image/png');
   }
 
+  // Draws text on the same dark card, offscreen — used when a link post has no thumbnail of its own
+  async function makeTextThumbFile(text) {
+    const W = 1280, H = 720, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#171717'; c.fillRect(0, 0, W, H);
+    try { await document.fonts.load('120px "Bebas Neue"'); } catch (e) {}
+    const fam = '"Bebas Neue", Impact, "Arial Narrow", sans-serif';
+    const t = String(text || 'XCLUICE').trim().toUpperCase().slice(0, 90);
+    let size = 280, lines = [];
+    for (; size >= 48; size -= 4) {
+      c.font = size + 'px ' + fam;
+      lines = wrapLines(c, t, W * 0.86);
+      if (lines.length * size <= H * 0.72 && lines.every((l) => c.measureText(l).width <= W * 0.86)) break;
+    }
+    c.font = size + 'px ' + fam;
+    if ('letterSpacing' in c) c.letterSpacing = Math.round(size * 0.015) + 'px';
+    c.fillStyle = '#f5f5f5'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const y0 = H / 2 - (lines.length * size) / 2 + size / 2;
+    lines.forEach((l, i) => c.fillText(l, W / 2, y0 + i * size));
+    const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+    return blob ? new File([blob], 'text-thumb.png', { type: 'image/png' }) : null;
+  }
+
   function setThumbMode(mode) {
     const text = mode === 'text';
     if (text && thumbMode !== 'text') imageThumbSaved = (selectedThumb && selectedThumb !== textThumbFile) ? selectedThumb : null;
@@ -336,19 +373,12 @@
         fileUrl = await uploadToBucket(selectedFile, '');
         if (selectedThumb) thumbUrl = await uploadToBucket(selectedThumb, 'thumb_');
       }
-      if (link && !selectedFile && selectedThumb) {
-        // Your own thumbnail (uploaded or typed) is the card picture; tapping the card opens the link
-        thumbUrl = await uploadToBucket(selectedThumb, 'thumb_');
+      if (link && !selectedFile) {
+        // The thumbnail (yours, or an auto text card from the headline) is the card picture; tapping the card opens the link
+        let tf = selectedThumb;
+        if (!tf) tf = await makeTextThumbFile(title || desc || host(link));
+        if (tf) thumbUrl = await uploadToBucket(tf, 'thumb_');
         fileUrl = link; linkOut = null;
-      } else if (link && (!selectedFile || (!thumbUrl && !isImageName(selectedFile.name)))) {
-        // Link alone: the screenshot is the post's picture. File + link, no thumbnail chosen: the screenshot becomes the thumbnail.
-        btn.textContent = 'Capturing preview…';
-        const shot = await captureScreenshot(link);
-        if (shot) { if (selectedFile) thumbUrl = shot; else fileUrl = shot; }
-        else {
-          if (!selectedFile) fileUrl = link;
-          toast('Couldn’t capture a preview of the link', 'err');
-        }
       }
       const fallbackTitle = link ? host(link) : '';
       const ins = await fetch(`${SB_URL}/rest/v1/${TABLE}`, {
@@ -445,15 +475,12 @@
 
       if (linkChanged) {
         if (link) {
-          const needShot = fileLike ? (canThumb && !thumbFinal) : !thumbFinal;
-          let shot = null;
-          if (needShot) { btn.textContent = 'Capturing preview…'; shot = await captureScreenshot(link); }
-          patch.link_url = link;
-          if (!fileLike) {
-            if (thumbFinal) { patch.file_url = link; patch.link_url = null; }
-            else if (shot) patch.file_url = shot;
-            else { patch.file_url = link; patch.link_url = null; toast('Couldn’t capture a preview of the link', 'err'); }
-          } else if (canThumb && !thumbFinal && shot) thumbFinal = shot;
+          if (!fileLike && !thumbFinal) {
+            const tf = await makeTextThumbFile(el('inputTitle').value.trim() || el('inputDesc').value.trim() || host(link));
+            if (tf) thumbFinal = await uploadToBucket(tf, 'thumb_');
+          }
+          if (!fileLike) { patch.file_url = link; patch.link_url = null; }
+          else patch.link_url = link;
         } else {
           patch.link_url = null;
           if (!fileLike && isLinkUrl(p.file_url)) patch.file_url = '';
