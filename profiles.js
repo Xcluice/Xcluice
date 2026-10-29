@@ -54,7 +54,16 @@
     if (!r.ok) throw new Error(path);
     return r.json();
   }
-  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,' + (currentUser ? 'email,' : '') + 'avatar_url,role,created_at,verified,followers_override,bio,website&limit=1000'); if (Array.isArray(d)) profiles = d; };
+  const loadProfiles = async () => { const d = await api('fosthub_users?select=id,username,display_name,' + (currentUser ? 'email,' : '') + 'avatar_url,role,created_at,verified,followers_override,bio,website&limit=1000'); if (Array.isArray(d)) { profiles = d; rankAvatars(); } };
+  // Number everyone by sign-up date so each person gets their own default avatar
+  const rankAvatars = () => {
+    const map = {}; let i = 0;
+    profiles.filter((x) => x.email).sort((x, y) => new Date(x.created_at) - new Date(y.created_at)).forEach((x) => { map[String(x.email).toLowerCase()] = i++; });
+    if (!i) return;
+    const changed = JSON.stringify(map) !== JSON.stringify(window.avRank);
+    window.avRank = map;
+    if (changed) { try { if (typeof updateUserUI === 'function' && currentUser) updateUserUI(); } catch (e) {} try { if (typeof renderGrid === 'function' && activeFilter !== 'people') renderGrid(); } catch (e) {} try { if (typeof renderChatUsers === 'function') renderChatUsers(); } catch (e) {} }
+  };
   // Only my own follow rows are loaded; other people's counts are fetched when their profile opens
   const counts = {};
   const loadFollows = async () => {

@@ -2010,7 +2010,14 @@
       let snapAnimateNext = true, lastSnapHtml = '', chatUsersLoaded = false;
       const SNAP_COLORS = ['#FF5A5F','#FFB400','#00C2A8','#0FADFF','#FF6FB5','#7BD500','#FF8A3D','#2DD4BF'];
       // Default cartoon avatar for people who haven't uploaded a photo (same person -> same character everywhere)
-      function defAvatar(key) { let n = 7; for (const c of String(key||'').toLowerCase()) n = (n*31 + c.charCodeAt(0)) >>> 0; return 'avatars/' + (n % 10 + 1) + '.svg'; }
+      // People are numbered in sign-up order (set once profiles load), so the first 20 people each get a different avatar; until then a hash picks one
+      window.avRank = window.avRank || {};
+      function defAvatar(key) {
+        const k = String(key||'').toLowerCase();
+        let n = window.avRank[k];
+        if (n === undefined) { n = 7; for (const c of k) n = (n*31 + c.charCodeAt(0)) >>> 0; }
+        return 'avatars/' + (n % 20 + 1) + '.svg';
+      }
       window.defAvatar = defAvatar;
       function snapColor(s) { let h = 0; for (const c of String(s||'')) h = (h*31 + c.charCodeAt(0)) >>> 0; return SNAP_COLORS[h % SNAP_COLORS.length]; }
       function snapAgo(iso) {
