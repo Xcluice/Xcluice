@@ -139,6 +139,7 @@
       input.classList.toggle('hidden', !show);
       if (show) input.focus(); else input.value = '';
       document.querySelector('#addLinkBtn span').textContent = show ? 'Remove link' : 'Add link';
+      updateThumbRow();
     });
     // Optional thumbnail picker, shown when the chosen file isn't an image
     const row2 = document.createElement('div');
@@ -234,6 +235,17 @@
     else selectedThumb = imageThumbSaved;
   }
 
+  // Render the latest typed text now and wait for the image, so a quick tap on Publish never loses it
+  async function flushTextThumb() {
+    if (thumbMode !== 'text') return;
+    const ta = document.getElementById('thumbText');
+    if (!ta || !ta.value.trim()) return;
+    clearTimeout(textTimer);
+    const before = textThumbFile;
+    await renderTextThumb();
+    for (let i = 0; i < 24 && textThumbFile === before; i++) await new Promise((r) => setTimeout(r, 50));
+  }
+
   function resetThumbText() {
     textRenderId++; textThumbFile = null; imageThumbSaved = null;
     const ta = document.getElementById('thumbText'); if (ta) ta.value = '';
@@ -262,7 +274,8 @@
   function updateThumbRow() {
     const row = document.getElementById('thumbRow');
     if (!row) return;
-    const show = !!selectedFile && !isImageName(selectedFile.name);
+    const linkOpen = !!document.getElementById('inputLink') && !document.getElementById('inputLink').classList.contains('hidden');
+    const show = selectedFile ? !isImageName(selectedFile.name) : linkOpen;
     row.classList.toggle('hidden', !show);
     if (!show) { if (selectedThumb) setThumb(null); resetThumbText(); }
   }
@@ -316,13 +329,18 @@
     if (!title && !desc && !selectedFile && !link) return;
     const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Publishing…';
     try {
-      let fileUrl = null, thumbUrl = null;
+      await flushTextThumb();
+      let fileUrl = null, thumbUrl = null, linkOut = link;
       if (selectedFile) {
         el('dzProgress').classList.remove('hidden');
         fileUrl = await uploadToBucket(selectedFile, '');
         if (selectedThumb) thumbUrl = await uploadToBucket(selectedThumb, 'thumb_');
       }
-      if (link && (!selectedFile || (!thumbUrl && !isImageName(selectedFile.name)))) {
+      if (link && !selectedFile && selectedThumb) {
+        // Your own thumbnail (uploaded or typed) is the card picture; tapping the card opens the link
+        thumbUrl = await uploadToBucket(selectedThumb, 'thumb_');
+        fileUrl = link; linkOut = null;
+      } else if (link && (!selectedFile || (!thumbUrl && !isImageName(selectedFile.name)))) {
         // Link alone: the screenshot is the post's picture. File + link, no thumbnail chosen: the screenshot becomes the thumbnail.
         btn.textContent = 'Capturing preview…';
         const shot = await captureScreenshot(link);
@@ -339,7 +357,7 @@
           title: title || selectedFile?.name || fallbackTitle || 'Post',
           subject: desc || title || fallbackTitle,
           file_url: fileUrl || '',
-          link_url: link,
+          link_url: linkOut,
           thumb_url: thumbUrl,
           author_name: currentUser.display_name, author_email: currentUser.email, author_photo: currentUser.avatar_url
         })
@@ -382,7 +400,7 @@
     const lab = attachLabel();
     if (lab) { lab.dataset.orig = lab.innerHTML; lab.textContent = 'Link'; }
     document.getElementById('addLinkBtn').classList.add('hidden');
-    if (hasRealFile(p) && !isImageName(p.file_url)) {
+    if ((hasRealFile(p) && !isImageName(p.file_url)) || (!hasRealFile(p) && isLinkUrl(p.file_url))) {
       document.getElementById('thumbRow').classList.remove('hidden');
       if (p.thumb_url) {
         existingThumb = p.thumb_url;
@@ -410,11 +428,13 @@
     if (!title && !desc && !p.file_url && !link) { toast('Add a title or description', 'err'); return; }
     const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Saving…';
     try {
+      await flushTextThumb();
       const patch = {
         title: title || p.title || 'Post',
         subject: desc || title || (hasRealFile(p) ? '' : (p.subject || ''))
       };
-      const fileLike = hasRealFile(p), canThumb = fileLike && !isImageName(p.file_url);
+      const fileLike = hasRealFile(p), linkOnlyPost = !fileLike && isLinkUrl(p.file_url);
+      const canThumb = (fileLike && !isImageName(p.file_url)) || linkOnlyPost;
       const linkChanged = (link || null) !== (oldLinkOf(p) || null);
 
       let thumbFinal = null;
@@ -425,12 +445,13 @@
 
       if (linkChanged) {
         if (link) {
-          const needShot = !fileLike || (canThumb && !thumbFinal);
+          const needShot = fileLike ? (canThumb && !thumbFinal) : !thumbFinal;
           let shot = null;
           if (needShot) { btn.textContent = 'Capturing preview…'; shot = await captureScreenshot(link); }
           patch.link_url = link;
           if (!fileLike) {
-            if (shot) patch.file_url = shot;
+            if (thumbFinal) { patch.file_url = link; patch.link_url = null; }
+            else if (shot) patch.file_url = shot;
             else { patch.file_url = link; patch.link_url = null; toast('Couldn’t capture a preview of the link', 'err'); }
           } else if (canThumb && !thumbFinal && shot) thumbFinal = shot;
         } else {
