@@ -108,8 +108,8 @@
     return (typeof allPosts !== 'undefined' ? allPosts : []).filter((x) => (em && lc(x.author_email) === em) || (!em && p.name && x.author_name === p.name));
   }
 
-  const avatarInner = (p, size) => p.photo ? `<img src="${A(p.photo)}" alt="" loading="lazy">` : `<span>${A((p.name || '?')[0].toUpperCase())}</span>`;
-  const avatarBg = (p) => p.photo ? '#111' : color(p.id || p.email || p.name);
+  const avatarInner = (p, size) => `<img src="${A(p.photo || window.defAvatar(p.email || p.name))}" alt="" loading="lazy">`;
+  const avatarBg = (p) => '#111';
 
   /* ───────── profile page ───────── */
   let pfEl = null, pfCur = null, pfOpen = false, pfCb = null;

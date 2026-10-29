@@ -1270,7 +1270,7 @@
         el('userRoleLabel').textContent = isAdmin ? '⚡ Admin' : currentUser.role;
         el('mobileUserName').textContent = currentUser.display_name;
         el('mobileUserEmail').textContent = currentUser.email;
-        const imgHtml = currentUser.avatar_url ? `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover">` : `<span>${initial}</span>`;
+        const imgHtml = `<img src="${currentUser.avatar_url || defAvatar(currentUser.email || currentUser.display_name)}" class="w-full h-full object-cover">`;
         document.getElementById('userAvatarTop').innerHTML = imgHtml;
         document.getElementById('userAvatarMobile').innerHTML = imgHtml;
       }
@@ -1411,7 +1411,7 @@
           </div>`;
         }
 
-        const avatarHtml = p.author_photo ? `<img src="${esc(p.author_photo)}" alt="${esc(author)}" loading="lazy" class="w-full h-full object-cover">` : `<span class="text-sm font-bold text-white">${author[0].toUpperCase()}</span>`;
+        const avatarHtml = true ? `<img src="${esc(p.author_photo || defAvatar(p.author_email || p.author_name))}" alt="${esc(author)}" loading="lazy" class="w-full h-full object-cover">` : `<span class="text-sm font-bold text-white">${author[0].toUpperCase()}</span>`;
 
         return `
           <div class="card-item x-card md:rounded-2xl overflow-hidden cursor-pointer mb-4 md:mb-0" onclick="openViewer('${p.id}')">
@@ -1484,7 +1484,7 @@
         el('viewerTitle').textContent  = p.subject || p.title || 'Post';
         el('viewerAuthor').innerHTML = esc(author) + tickFor({ email: p.author_email });
         el('viewerDate').textContent   = new Date(p.created_at).toLocaleString();
-        el('viewerAvatar').innerHTML   = p.author_photo ? `<img src="${esc(p.author_photo)}" alt="${esc(author)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
+        el('viewerAvatar').innerHTML   = true ? `<img src="${esc(p.author_photo || defAvatar(p.author_email || p.author_name))}" alt="${esc(author)}" class="w-full h-full object-cover">` : author[0].toUpperCase();
         { const va = el('viewerAvatar'); va.classList.add('pf-tap'); va.dataset.pfEmail = p.author_email || ''; va.dataset.pfName = p.author_name || ''; va.dataset.pfPhoto = p.author_photo || ''; }
         const content = el('viewerContent');
         if (p.file_url) {
@@ -2009,6 +2009,9 @@
       /* ── Snapchat-style chat list ── */
       let snapAnimateNext = true, lastSnapHtml = '', chatUsersLoaded = false;
       const SNAP_COLORS = ['#FF5A5F','#FFB400','#00C2A8','#0FADFF','#FF6FB5','#7BD500','#FF8A3D','#2DD4BF'];
+      // Default cartoon avatar for people who haven't uploaded a photo (same person -> same character everywhere)
+      function defAvatar(key) { let n = 7; for (const c of String(key||'').toLowerCase()) n = (n*31 + c.charCodeAt(0)) >>> 0; return 'avatars/' + (n % 10 + 1) + '.svg'; }
+      window.defAvatar = defAvatar;
       function snapColor(s) { let h = 0; for (const c of String(s||'')) h = (h*31 + c.charCodeAt(0)) >>> 0; return SNAP_COLORS[h % SNAP_COLORS.length]; }
       function snapAgo(iso) {
         const s = Math.max(0, Math.floor((Date.now()-new Date(iso))/1000));
@@ -2072,9 +2075,7 @@
 
         const html = rows.map((r, i) => {
           const u = r.u, name = u.name || '?';
-          const av = u.photo
-            ? `<div class="snap-av" style="background:#111"><img src="${esc(u.photo)}" alt=""></div>`
-            : `<div class="snap-av" style="background:${snapColor(u.uid)}">${esc(name[0].toUpperCase())}</div>`;
+          const av = `<div class="snap-av" style="background:#111"><img src="${esc(u.photo || defAvatar(u.email || u.name))}" alt=""></div>`;
           const avatar = r.unread ? `<div class="snap-ring">${av}</div>` : av;
           let sub;
           if (!r.last) {
@@ -2100,10 +2101,10 @@
       function openDM(person) {
         currentThread = person; snapMarkRead(person.uid);
         skipAnimOnce = true; forceScroll = true; renderedMsgIds = new Set(); msgHtmlCache = {}; clearReply();
-        const bg = person.photo ? '#111' : snapColor(person.uid), ini = ((person.name||'?')[0]||'?').toUpperCase();
+        const bg = '#111', ini = '';
         el('chatThreadName').innerHTML = esc(person.name) + tickFor({ uid: person.uid });
         el('chatThreadNameMobile').innerHTML = esc(person.name) + tickFor({ uid: person.uid });
-        ['chatThreadAvatar','chatThreadAvatarMobile'].forEach(id => { const a = el(id); a.style.background = bg; a.innerHTML = person.photo ? `<img src="${esc(person.photo)}" alt="">` : ini; });
+        ['chatThreadAvatar','chatThreadAvatarMobile'].forEach(id => { const a = el(id); a.style.background = bg; a.innerHTML = `<img src="${esc(person.photo || defAvatar(person.email || person.name))}" alt="">`; });
         el('chatPlaceholder').classList.add('hidden');
         el('chatThreadView').classList.remove('hidden'); el('chatThreadView').classList.add('flex');
         el('chatThreadMobile').classList.remove('hidden'); el('chatThreadMobile').classList.add('flex');
