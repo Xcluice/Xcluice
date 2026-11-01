@@ -38,6 +38,99 @@
   badgeColors.link = 'from-cyan-600/20 to-cyan-500/10 text-cyan-300 border-cyan-500/25';
   badgeLabel.link = 'Link';
 
+  /* ── YouTube-style action row under each post (replaces the 3-dot menu) ── */
+  const myLikes = new Set();
+  let likesFor = null;
+  const num = (n) => { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n); };
+
+  (function () {
+    const st = document.createElement('style');
+    st.textContent =
+      '.pa-row{display:flex;align-items:center;gap:8px;padding:0 12px 12px;overflow-x:auto;scrollbar-width:none;-webkit-tap-highlight-color:transparent}' +
+      '.pa-row::-webkit-scrollbar{display:none}' +
+      '@media(min-width:768px){.pa-row{padding:0 16px 14px}}' +
+      '.pa-btn{display:inline-flex;align-items:center;gap:6px;flex:none;height:32px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:600;line-height:1;color:rgba(226,232,240,.85);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;text-decoration:none;transition:background .2s,transform .15s,color .2s,border-color .2s;-webkit-tap-highlight-color:transparent;user-select:none}' +
+      '.pa-btn:hover{background:rgba(255,255,255,.12)}' +
+      '.pa-btn:active{transform:scale(.94)}' +
+      '.pa-btn svg{width:15px;height:15px}' +
+      '.pa-stat{cursor:default}.pa-stat:hover{background:rgba(255,255,255,.06)}.pa-stat:active{transform:none}' +
+      '.pa-like.on{color:#fb7185;background:linear-gradient(135deg,rgba(251,113,133,.20),rgba(251,146,60,.12));border-color:rgba(251,113,133,.35)}' +
+      '.pa-like.on svg{fill:#fb7185;stroke:#fb7185}' +
+      '.pa-like.pop svg{animation:paPop .45s cubic-bezier(.16,1,.3,1)}' +
+      '@keyframes paPop{0%{transform:scale(1)}35%{transform:scale(1.55) rotate(-8deg)}70%{transform:scale(.92)}100%{transform:scale(1)}}' +
+      '.pa-del{color:#f87171}.pa-pin{color:#fcd34d}';
+    document.head.appendChild(st);
+  })();
+
+  function actionRowHTML(p) {
+    const id = esc(String(p.id));
+    const liked = myLikes.has(String(p.id));
+    const link = postLink(p);
+    const parts = [];
+    parts.push('<button type="button" class="pa-btn pa-like' + (liked ? ' on' : '') + '" data-like="' + id + '" aria-label="Like" aria-pressed="' + liked + '" onclick="event.stopPropagation();togglePostLike(\'' + id + '\',this)"><i data-lucide="heart"></i><span>' + num(p.likes) + '</span></button>');
+    parts.push('<span class="pa-btn pa-stat" data-taps="' + id + '" aria-label="Taps"><i data-lucide="mouse-pointer-click"></i><span>' + num(p.taps) + '</span></span>');
+    if (link) parts.push('<a class="pa-btn" href="' + safeUrl(link) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><i data-lucide="external-link"></i>Open link</a>');
+    if (hasRealFile(p)) parts.push('<a class="pa-btn" href="' + esc(p.file_url) + '" target="_blank" download onclick="event.stopPropagation()"><i data-lucide="download"></i>Download</a>');
+    if (canEdit(p)) parts.push('<button type="button" class="pa-btn" onclick="event.stopPropagation();openEdit(\'' + id + '\')"><i data-lucide="pencil"></i>Edit</button>');
+    if (currentUser && (currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin')) parts.push('<button type="button" class="pa-btn pa-pin" onclick="event.stopPropagation();togglePin(\'' + id + '\')"><i data-lucide="pin"></i>' + (p.pinned ? 'Unpin' : 'Pin') + '</button>');
+    if (canEdit(p)) parts.push('<button type="button" class="pa-btn pa-del" onclick="event.stopPropagation();if(confirm(\'Delete this post?\'))deletePost(\'' + id + '\')"><i data-lucide="trash-2"></i>Delete</button>');
+    return '<div class="pa-row" onclick="event.stopPropagation()">' + parts.join('') + '</div>';
+  }
+
+  function addActionRow(h, p) {
+    const i = h.lastIndexOf('</div>');
+    return i < 0 ? h : h.slice(0, i) + actionRowHTML(p) + h.slice(i);
+  }
+
+  function paintLike(id) {
+    const p = allPosts.find((x) => String(x.id) === String(id));
+    document.querySelectorAll('[data-like="' + id + '"]').forEach((b) => {
+      const on = myLikes.has(String(id));
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on);
+      b.querySelector('span').textContent = num(p && p.likes);
+    });
+  }
+
+  window.togglePostLike = async (id, btn) => {
+    if (!currentUser) { toast('Sign in to like posts', 'err'); return; }
+    const p = allPosts.find((x) => String(x.id) === String(id));
+    if (!p) return;
+    const was = myLikes.has(String(id));
+    const apply = (liked) => { liked ? myLikes.add(String(id)) : myLikes.delete(String(id)); p.likes = Math.max((Number(p.likes) || 0) + (liked ? 1 : -1), 0); paintLike(id); };
+    apply(!was);
+    if (!was && btn) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
+    try {
+      const r = was
+        ? await fetch(`${SB_URL}/rest/v1/post_likes?post_id=eq.${id}&uid=eq.${currentUser.id}`, { method: 'DELETE', headers: authHeaders() })
+        : await fetch(`${SB_URL}/rest/v1/post_likes`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }), body: JSON.stringify({ post_id: Number(id), uid: String(currentUser.id) }) });
+      if (!r.ok && r.status !== 409) throw new Error();
+    } catch (e) { apply(was); toast('Couldn’t update like', 'err'); }
+  };
+
+  async function loadMyLikes() {
+    if (!currentUser || likesFor === currentUser.id) return;
+    const uid = currentUser.id;
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/post_likes?select=post_id&uid=eq.${uid}&limit=5000`, { headers: authHeaders() });
+      if (!r.ok) return;                       // offline / table missing: stay signed in, just no hearts
+      const rows = await r.json();
+      likesFor = uid; myLikes.clear();
+      rows.forEach((x) => myLikes.add(String(x.post_id)));
+      allPosts.forEach((p) => paintLike(p.id));
+    } catch (e) { /* network down: ignore */ }
+  }
+
+  function bumpTap(p) {
+    if (!p) return;
+    p.taps = (Number(p.taps) || 0) + 1;
+    document.querySelectorAll('[data-taps="' + p.id + '"] span').forEach((s) => { s.textContent = num(p.taps); });
+    fetch(`${SB_URL}/rest/v1/rpc/bump_post_tap`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ p_id: Number(p.id) }) }).catch(() => {});
+  }
+
+  const _renderGrid = renderGrid;
+  window.renderGrid = function () { _renderGrid.apply(this, arguments); loadMyLikes(); };
+
   const _cardHTML = cardHTML;
   const THUMB_RE = /(<div class="w-full aspect-video[^>]*>)[\s\S]*?(<span class="absolute bottom-2)/;
   window.cardHTML = (p) => {
@@ -56,8 +149,7 @@
         '<span class="text-xs text-cyan-300/80 font-semibold max-w-full truncate">' + esc(host(p.file_url)) + '</span></div>';
       h = h.replace(THUMB_RE, (m, a, b) => a + thumb + b);
     }
-    // Nothing to show in the 3-dot menu for this viewer (not owner/admin, and no file to download) -> no button
-    if (!canEdit(p) && !hasRealFile(p)) h = h.replace(/<button[^>]*openPostMenu[\s\S]*?<\/button>/, '');
+    h = addActionRow(h, p);
     if (p.pinned) h = h.replace(/(<div class="w-full aspect-video[^>]*>)/, '$1<span class="absolute top-2 left-2 z-10 text-[10px] font-bold rounded-full px-2 py-0.5 text-white" style="background:rgba(8,5,20,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">📌 Pinned</span>');
     return h;
   };
@@ -68,6 +160,7 @@
   window.openViewer = (id) => {
     const p = allPosts.find((x) => String(x.id) === String(id));
     document.getElementById('viewerLinkBtn')?.remove();
+    bumpTap(p);
     if (p && linkOnly(p)) { window.open(postLink(p), '_blank', 'noopener,noreferrer'); return; }
     _openViewer(id);
     if (!p) return;
@@ -84,26 +177,7 @@
     }
   };
 
-  // Three-dot menu: "Open link" instead of "Download" for link posts.
-  const _openPostMenu = openPostMenu;
-  window.openPostMenu = (e, id) => {
-    _openPostMenu(e, id);
-    const p = allPosts.find((x) => String(x.id) === String(id));
-    if (p && canEdit(p)) {
-      document.getElementById('postMenu').insertAdjacentHTML('afterbegin',
-        '<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors" onclick="openEdit(\'' + p.id + '\')"><i data-lucide="pencil" class="w-4 h-4"></i> Edit</button>');
-      refreshIcons();
-    }
-    if (p && linkOnly(p)) document.querySelector('#postMenu a[download]')?.remove();
-    if (p && currentUser && (currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin')) {
-      document.getElementById('postMenu').insertAdjacentHTML('afterbegin',
-        '<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-amber-300 hover:bg-violet-900/30 transition-colors" onclick="togglePin(\'' + p.id + '\')"><i data-lucide="pin" class="w-4 h-4"></i> ' + (p.pinned ? 'Unpin post' : 'Pin post') + '</button>');
-      refreshIcons();
-    }
-  };
-
   window.togglePin = async (id) => {
-    closePostMenu();
     const p = allPosts.find((x) => String(x.id) === String(id));
     if (!p) return;
     const next = !p.pinned;

@@ -1468,9 +1468,6 @@
                 <h3 class="font-semibold text-sm leading-snug line-clamp-2 text-slate-100">${esc(p.subject||p.title||'Untitled')}</h3>
                 <p class="text-[11px] text-violet-400/50 mt-1 truncate font-medium">${esc(author)}${tickFor({ email: p.author_email })} · ${timeAgo(p.created_at)}</p>
               </div>
-              <button class="p-1.5 rounded-full hover:bg-violet-900/30 text-violet-400/40 hover:text-violet-300 shrink-0 -mr-1 transition-colors" onclick="event.stopPropagation(); openPostMenu(event, '${p.id}')">
-                <i data-lucide="more-vertical" class="w-4 h-4"></i>
-              </button>
             </div>
           </div>`;
       }
@@ -1494,21 +1491,7 @@
         }
       }
 
-      function openPostMenu(e, id) {
-        const post = allPosts.find(x => String(x.id) === String(id));
-        if (!post) return;
-        const menu = el('postMenu');
-        const showDel = currentUser && (currentUser.email === ADMIN_EMAIL || currentUser.role === 'Admin' || (post.author_email && currentUser.email === post.author_email));
-        let html = '';
-        if (post.file_url) html += `<a href="${esc(post.file_url)}" target="_blank" download class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-violet-300 hover:bg-violet-900/30 transition-colors"><i data-lucide="download" class="w-4 h-4"></i> Download</a>`;
-        if (showDel) html += `<button class="flex items-center gap-2.5 w-full px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors" onclick="deletePost('${post.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>`;
-        menu.innerHTML = html;
-        const rect = e.currentTarget.getBoundingClientRect();
-        menu.style.cssText = `left:${Math.min(rect.right - 180, window.innerWidth - 190)}px; top:${rect.bottom + window.scrollY}px;`;
-        menu.classList.add('open');
-        refreshIcons();
-      }
-      function closePostMenu() { el('postMenu').classList.remove('open'); }
+      function closePostMenu() { el('postMenu')?.classList.remove('open'); }
 
       async function deletePost(id) {
         closePostMenu();
