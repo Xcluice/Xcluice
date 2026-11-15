@@ -38,6 +38,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -124,23 +126,31 @@ fun FeedTab() {
                     Box(Modifier.size(36.dp).pressable(true, 0.86f) { searchOpen = !searchOpen; if (!searchOpen) App.search = "" }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) {
                         Glyph(if (searchOpen) G.CLOSE else G.SEARCH, 18.dp, Color.White)
                     }
-                    Spacer(Modifier.size(8.dp))
-                    Box(Modifier.size(36.dp).pressable(true, 0.86f) { App.refresh() }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) {
-                        if (App.postsLoading) Spinner(20.dp) else Glyph(G.REFRESH, 18.dp, Color.White)
-                    }
                 }
                 AnimatedVisibility(searchOpen, enter = expandVertically(tween(260)) + fadeIn(), exit = shrinkVertically(tween(200)) + fadeOut()) {
                     Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)) { InputBox(App.search, { App.search = it }, "Search posts", minHeight = 44.dp) }
                 }
             }
-            if (list.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (App.postsLoading) Spinner(34.dp) else T(if (App.search.isNotBlank()) "No matches." else "No posts here yet.", 15.sp, color = Muted)
-                }
-            } else {
-                LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 130.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    itemsIndexed(list, key = { _, p -> p.id }) { i, p -> PostCard(p, i) }
-                    if (App.postsMore && App.search.isBlank()) item { Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { Spinner(24.dp) } }
+            PullRefresh(App.showSkeleton, { App.refresh() }, Modifier.fillMaxSize()) {
+                if (App.showSkeleton || (list.isEmpty() && App.postsLoading)) {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 14.dp, end = 14.dp, top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        repeat(4) { SkeletonCard(it) }
+                    }
+                } else if (list.isEmpty()) {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        val err = App.postsError
+                        if (err != null && App.search.isBlank()) {
+                            T(err, 17.sp, FontWeight.Bold, align = TextAlign.Center)
+                            Spacer(Modifier.size(8.dp))
+                            T("Couldn't load posts. Swipe down to try again.", 14.sp, color = Muted, align = TextAlign.Center)
+                        } else T(if (App.search.isNotBlank()) "No matches." else "No posts here yet.", 15.sp, color = Muted)
+                    }
+                } else {
+                    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 130.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        App.postsError?.let { e -> item { Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Glass).padding(12.dp)) { T("$e \u00B7 showing saved posts. Swipe down to retry.", 13.sp, color = Soft) } } }
+                        itemsIndexed(list, key = { _, p -> p.id }) { i, p -> PostCard(p, i) }
+                        if (App.postsMore && App.search.isBlank()) item { Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { Spinner(24.dp) } }
+                    }
                 }
             }
         }
@@ -209,3 +219,65 @@ private fun PostCard(p: Post, index: Int) {
         }
     }
 }
+
+
+@Composable
+private fun SkeletonCard(index: Int) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "sk")
+    val a by t.animateFloat(0.35f, 0.9f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(850, delayMillis = index * 90), androidx.compose.animation.core.RepeatMode.Reverse), label = "a")
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Glass2).border(1.dp, Hair, RoundedCornerShape(22.dp)).graphicsLayer { alpha = a }) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Glass))
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(34.dp).clip(CircleShape).background(Glass))
+                Box(Modifier.height(13.dp).width(120.dp).clip(RoundedCornerShape(7.dp)).background(Glass))
+            }
+            Box(Modifier.height(15.dp).fillMaxWidth(0.8f).clip(RoundedCornerShape(7.dp)).background(Glass))
+            Box(Modifier.height(11.dp).fillMaxWidth(0.5f).clip(RoundedCornerShape(6.dp)).background(Glass2))
+        }
+    }
+}
+
+/** Swipe-down-to-refresh for any scrollable content (no extra dependency). */
+@Composable
+fun PullRefresh(refreshing: Boolean, onRefresh: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    var pull by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var dragging by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val threshold = with(androidx.compose.ui.platform.LocalDensity.current) { 80.dp.toPx() }
+    val busy by androidx.compose.runtime.rememberUpdatedState(refreshing)
+    val onRef by androidx.compose.runtime.rememberUpdatedState(onRefresh)
+    val conn = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                if (pull > 0f && available.y < 0f) { val c = maxOf(available.y, -pull); pull += c; return Offset(0f, c) }
+                return Offset.Zero
+            }
+            override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Drag && available.y > 0f && !busy) {
+                    dragging = true
+                    pull = (pull + available.y * 0.5f).coerceAtMost(threshold * 1.5f)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                val had = pull > 0f
+                if (pull >= threshold && !busy) onRef()
+                dragging = false; pull = 0f
+                return if (had) available else androidx.compose.ui.unit.Velocity.Zero
+            }
+        }
+    }
+    val shown by androidx.compose.animation.core.animateFloatAsState(if (dragging) pull else if (busy) threshold * 0.55f else 0f, androidx.compose.animation.core.spring(stiffness = 500f), label = "pull")
+    Box(modifier.androidx_nested(conn)) {
+        Box(Modifier.align(Alignment.TopCenter).padding(top = 10.dp).graphicsLayer { alpha = (shown / threshold).coerceIn(0f, 1f); scaleX = 0.6f + 0.4f * (shown / threshold).coerceIn(0f, 1f); scaleY = scaleX }) {
+            Box(Modifier.size(34.dp).clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) {
+                if (busy || pull >= threshold) Spinner(18.dp) else Glyph(G.REFRESH, 16.dp, Color.White)
+            }
+        }
+        Box(Modifier.fillMaxSize().graphicsLayer { translationY = shown }) { content() }
+    }
+}
+
+private fun Modifier.androidx_nested(c: androidx.compose.ui.input.nestedscroll.NestedScrollConnection): Modifier =
+    this.then(Modifier.nestedScroll(c))

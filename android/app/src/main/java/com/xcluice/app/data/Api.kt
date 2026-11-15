@@ -76,10 +76,13 @@ object Api {
         return res
     }
 
+    @Volatile var offline = false
+
     private suspend fun run(build: () -> Request.Builder): Pair<Int, String> = withContext(Dispatchers.IO) {
         try {
-            http.newCall(build().build()).execute().use { it.code to (it.body?.string() ?: "") }
+            http.newCall(build().build()).execute().use { offline = false; it.code to (it.body?.string() ?: "") }
         } catch (e: Exception) {
+            offline = true
             -1 to ""
         }
     }

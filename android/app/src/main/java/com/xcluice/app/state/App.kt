@@ -68,6 +68,9 @@ object App {
     // ---- feed ----
     var posts by mutableStateOf<List<Post>>(emptyList())
     var postsLoading by mutableStateOf(false)
+    var postsError by mutableStateOf<String?>(null)
+    var showSkeleton by mutableStateOf(false)
+    private fun netMsg() = if (Api.offline) "No internet connection" else "Server didn't respond. Try again"
     var postsMore by mutableStateOf(false)
     var filter by mutableIntStateOf(0)
     var liked by mutableStateOf<Set<Long>>(emptySet())
@@ -272,13 +275,17 @@ object App {
     fun isVerified(uid: String?, email: String?): Boolean =
         (uid != null && uid in verifiedIds) || (!email.isNullOrBlank() && email.lowercase() in verifiedEmails)
 
-    fun refresh() { scope.launch { loadPosts() } }
+    fun refresh() { if (showSkeleton) return; showSkeleton = true; scope.launch { val t0 = System.currentTimeMillis(); loadPosts(); val d = 650 - (System.currentTimeMillis() - t0); if (d > 0) delay(d); showSkeleton = false } }
     suspend fun loadPostsNow() { loadPosts() }
 
     suspend fun loadPosts() {
         postsLoading = true
         val rows = Api.posts(30)
-        if (rows != null) {
+        if (rows == null) {
+            postsError = netMsg()
+            if (posts.isNotEmpty()) toast("Couldn't refresh posts \u00B7 " + netMsg())
+        } else {
+            postsError = null
             val pins = Api.pinned()
             val seen = rows.map { it.id }.toSet()
             val all = rows + pins.filter { it.id !in seen }
@@ -295,6 +302,7 @@ object App {
         scope.launch {
             postsLoading = true
             val rows = Api.posts(30, last.createdAt)
+            if (rows == null) toast("Couldn't load more \u00B7 " + netMsg())
             if (rows != null) {
                 val seen = posts.map { it.id }.toSet()
                 posts = (posts + rows.filter { it.id !in seen }).sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs })
