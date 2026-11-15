@@ -233,12 +233,19 @@ object App {
 
     fun openProfile(w: com.xcluice.app.data.Who) { profile = w }
 
-    fun editPost(p: Post, text: String) {
+    fun editPost(p: Post, text: String, bytes: ByteArray? = null, mime: String? = null, ext: String? = null) {
         val t = text.trim()
         if (t.isEmpty()) return
+        val u = user
         scope.launch {
-            if (Api.updatePost(p.id, t.take(60), t)) {
-                val f = { x: Post -> if (x.id == p.id) x.copy(title = t.take(60), subject = t) else x }
+            var newUrl: String? = null
+            if (bytes != null && mime != null && u != null) {
+                toast("Uploading…")
+                newUrl = Api.upload("${u.username}_${System.currentTimeMillis()}.${ext ?: "bin"}", mime, bytes)
+                if (newUrl == null) { toast("Upload failed"); return@launch }
+            }
+            if (Api.updatePost(p.id, t.take(60), t, newUrl)) {
+                val f = { x: Post -> if (x.id == p.id) x.copy(title = t.take(60), subject = t, fileUrl = newUrl ?: x.fileUrl) else x }
                 posts = posts.map(f)
                 viewing = viewing?.let(f)
                 toast("Post updated")

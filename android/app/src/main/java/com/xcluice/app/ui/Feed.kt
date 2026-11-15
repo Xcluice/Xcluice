@@ -254,23 +254,27 @@ fun Composer() {
                         }
                     }
                 )
+                val shownUrl: Any? = uri ?: ed?.fileUrl?.takeIf { isImageUrl(it) }
+                if (shownUrl != null) {
+                    Spacer(Modifier.height(12.dp))
+                    AsyncImage(shownUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(16.dp)).background(Panel))
+                }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (ed == null) Row(
+                    Row(
                         Modifier.pressable(true, 0.92f) { pick.launch("*/*") }.clip(CircleShape).background(Glass).padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) { Glyph(G.IMAGE, 18.dp, Color.White); T(if (uri == null) "Attach file" else "File attached", 14.sp, FontWeight.SemiBold) }
+                    ) { Glyph(G.IMAGE, 18.dp, Color.White); T(if (uri == null) (if (ed != null) "Change thumbnail" else "Attach file") else "New file selected", 14.sp, FontWeight.SemiBold) }
                     Spacer(Modifier.weight(1f))
                     Box(
                         Modifier.height(46.dp).width(110.dp).pressable(text.isNotBlank() || uri != null, 0.94f) {
-                            if (ed != null) { App.editPost(ed, text); App.editing = null; return@pressable }
                             var bytes: ByteArray? = null; var mime: String? = null; var ext: String? = null
                             uri?.let { u ->
                                 bytes = runCatching { ctx.contentResolver.openInputStream(u)?.use { it.readBytes() } }.getOrNull()
                                 mime = ctx.contentResolver.getType(u) ?: "application/octet-stream"
                                 ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "bin"
                             }
-                            App.publish(text, bytes, mime, ext)
+                            if (ed != null) App.editPost(ed, text, bytes, mime, ext) else App.publish(text, bytes, mime, ext)
                             text = ""; uri = null; App.composing = false
                         }.clip(CircleShape).background(if (text.isNotBlank() || uri != null) Color.White else Glass),
                         contentAlignment = Alignment.Center

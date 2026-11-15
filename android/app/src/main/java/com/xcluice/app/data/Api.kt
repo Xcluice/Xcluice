@@ -204,8 +204,11 @@ object Api {
     suspend fun postsByAuthor(email: String): List<Post>? =
         getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=100")?.let { parsePosts(it) }
 
-    suspend fun updatePost(id: Long, title: String, subject: String): Boolean =
-        call { req("/rest/v1/homework?id=eq.$id").header("Content-Type", "application/json").patch(jsonBody(JSONObject().put("title", title).put("subject", subject))) }.first in 200..299
+    suspend fun updatePost(id: Long, title: String, subject: String, fileUrl: String? = null): Boolean {
+        val o = JSONObject().put("title", title).put("subject", subject)
+        if (fileUrl != null) o.put("file_url", fileUrl)
+        return call { req("/rest/v1/homework?id=eq.$id").header("Content-Type", "application/json").patch(jsonBody(o)) }.first in 200..299
+    }
 
     suspend fun pinned(): List<Post> =
         getArr("/rest/v1/homework?order=created_at.desc&pinned=eq.true")?.let { parsePosts(it) } ?: emptyList()
