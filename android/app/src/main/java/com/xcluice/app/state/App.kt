@@ -24,6 +24,7 @@ import com.xcluice.app.data.User
 import com.xcluice.app.data.parseMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import com.xcluice.app.data.isImageUrl
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -59,6 +60,9 @@ object App {
     var storyDraft by mutableStateOf<android.net.Uri?>(null)
     var search by mutableStateOf("")
     var editingProfile by mutableStateOf(false)
+    var ready by mutableStateOf(false)
+    var sound by mutableStateOf(true)
+    private var firstOpen = true
     var confirm by mutableStateOf<Confirm?>(null)
 
     // ---- feed ----
@@ -87,6 +91,7 @@ object App {
     private val seenIds = HashSet<Long>()
     val renderedIds = HashSet<Long>()
     private var lastId: Long? = null
+    private var firstFetch = true
     private var tempSeq = -1L
     private var reactionPending = 0
     private var lastTyping = 0L
@@ -112,6 +117,7 @@ object App {
         }
         if (Api.refreshToken == null) user = null
         guest = prefs.getBoolean("guest", false)
+        sound = prefs.getBoolean("sound", true); com.xcluice.app.data.Sfx.enabled = sound
         scope.launch {
             val u = user
             if (u != null) {
@@ -175,16 +181,44 @@ object App {
 
     private suspend fun bootData() {
         val key = user?.id ?: "guest"
-        if (bootedFor == key && posts.isNotEmpty()) return
+        if (bootedFor == key && posts.isNotEmpty()) { ready = true; return }
         bootedFor = key
-        loadPosts()
-        loadSocial()
-        scope.launch { val (a, b) = Api.verified(); verifiedIds = a; verifiedEmails = b }
+        val jobs = mutableListOf<Job>()
+        jobs += scope.launch { loadPosts() }
+        jobs += scope.launch { Api.profiles(user != null)?.let { applyProfiles(it) }; Api.stories()?.let { stories = it } }
+        jobs += scope.launch { val (a, b) = Api.verified(); verifiedIds = a; verifiedEmails = b }
         user?.let { u ->
-            scope.launch { liked = Api.myLikes(u.id) }
+            jobs += scope.launch { liked = Api.myLikes(u.id) }
+            jobs += scope.launch { user?.let { x -> Api.follows(x.id)?.let { follows = it } } }
+            jobs += scope.launch { fetchUsers() }
             startChat()
         }
+        jobs.forEach { it.join() }
+        prefetchImages()
+        ready = true
     }
+
+    private fun prefetchImages() {
+        val loader = coil.Coil.imageLoader(appCtx)
+        val urls = posts.take(8).flatMap { listOf(it.thumbUrl, it.authorPhoto, it.fileUrl.takeIf { u -> isImageUrl(u) }) } +
+            stories.take(6).map { it.mediaUrl.takeIf { _ -> it.kind == "image" } }
+        urls.filterNotNull().filter { it.isNotBlank() }.distinct().take(20).forEach {
+            loader.enqueue(coil.request.ImageRequest.Builder(appCtx).data(it).build())
+        }
+    }
+
+    /** Called every time the app comes to the foreground. */
+    fun onOpen() {
+        if (firstOpen) { firstOpen = false; return }
+        if (!ready) return
+        scope.launch {
+            launch { loadPosts() }
+            loadSocial()
+            if (user != null) { launch { fetchMessages(); syncState() }; launch { fetchUsers() }; launch { user?.let { Api.presence(it) } } }
+        }
+    }
+
+    fun setSound(on: Boolean) { sound = on; com.xcluice.app.data.Sfx.enabled = on; prefs.edit().putBoolean("sound", on).apply(); if (on) com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.DONE) }
 
     fun isVerified(uid: String?, email: String?): Boolean =
         (uid != null && uid in verifiedIds) || (!email.isNullOrBlank() && email.lowercase() in verifiedEmails)
@@ -230,6 +264,7 @@ object App {
         if (u == null) { toast("Sign in to like posts"); return }
         val was = p.id in liked
         liked = if (was) liked - p.id else liked + p.id
+        if (!was) com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.LIKE)
         posts = posts.map { if (it.id == p.id) it.copy(likes = maxOf(0, it.likes + if (was) -1 else 1)) else it }
         scope.launch { if (was) Api.unlike(p.id, u.id) else Api.like(p.id, u.id) }
     }
@@ -276,15 +311,17 @@ object App {
     // ---------------- profiles, follows, stories ----------------
     fun loadSocial() {
         scope.launch {
-            Api.profiles(user != null)?.let { list ->
-                profiles = list
-                Av.rank = list.filter { it.email.isNotBlank() }
-                    .sortedBy { com.xcluice.app.data.parseMs(it.joined) }
-                    .mapIndexed { i, pr -> pr.email.lowercase() to i }.toMap()
-            }
+            Api.profiles(user != null)?.let { applyProfiles(it) }
             user?.let { u -> Api.follows(u.id)?.let { follows = it } }
             Api.stories()?.let { stories = it }
         }
+    }
+
+    private fun applyProfiles(list: List<Profile>) {
+        profiles = list
+        Av.rank = list.filter { it.email.isNotBlank() }
+            .sortedBy { com.xcluice.app.data.parseMs(it.joined) }
+            .mapIndexed { i, pr -> pr.email.lowercase() to i }.toMap()
     }
 
     fun resolve(w: com.xcluice.app.data.Who): Profile {
@@ -305,6 +342,7 @@ object App {
     fun toggleFollow(id: String) {
         val u = user ?: return
         val was = isFollowing(id)
+        com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.TAP)
         follows = if (was) follows.filter { !(it.first == u.id && it.second == id) } else follows + (u.id to id)
         counts[id]?.let { c -> if (c.first != null) counts[id] = (c.first!! + if (was) -1 else 1) to c.second }
         scope.launch {
@@ -336,6 +374,7 @@ object App {
         val q = queue.filter { storiesOf(it).isNotEmpty() }
         if (q.isEmpty()) return
         storyU = u.coerceIn(0, q.size - 1); storyI = i; storyQueue = q
+        com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.STORY)
     }
 
     fun closeStories() { storyQueue = null }
@@ -424,6 +463,9 @@ object App {
         if (fresh.isEmpty()) return
         messages = messages.filter { !it.temp } + fresh
         lastId = rows.last().id
+        val me = user?.id
+        if (me != null && !firstFetch && fresh.any { it.uid != me && it.toUid == me }) com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.RECV)
+        firstFetch = false
     }
 
     private suspend fun syncState() {
@@ -471,6 +513,7 @@ object App {
         val now = System.currentTimeMillis()
         val temp = Msg(tid, u.id, u.displayName, text, to, rep?.id, java.time.Instant.now().toString(), now, true)
         messages = messages + temp
+        com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.SEND)
         scope.launch {
             val saved = Api.sendMessage(u.id, u.displayName, text, to, rep?.id?.takeIf { it > 0 })
             if (saved == null) {

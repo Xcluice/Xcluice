@@ -62,6 +62,8 @@ import com.xcluice.app.ui.T
 import com.xcluice.app.ui.pressable
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() { super.onStart(); App.onOpen() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(AColor.TRANSPARENT),

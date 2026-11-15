@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -57,15 +62,23 @@ fun Intro(onDone: () -> Unit) {
             )
         }
     }
+    var finished by remember { mutableStateOf(false) }
+    suspend fun finish() {
+        if (finished) return
+        finished = true
+        kotlinx.coroutines.withTimeoutOrNull(4500) { androidx.compose.runtime.snapshotFlow { com.xcluice.app.state.App.ready }.first { it } }
+        onDone()
+    }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     LaunchedEffect(Unit) {
         p.animateTo(1f, tween(3300, easing = LinearEasing))
-        onDone()
+        finish()
     }
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(Unit) { detectTapGestures { onDone() } }
+            .pointerInput(Unit) { detectTapGestures { scope.launch { finish() } } }
             .graphicsLayer {
                 val f = easeInOut((p.value - 0.92f) / 0.08f)
                 alpha = 1f - f
