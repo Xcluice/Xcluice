@@ -276,7 +276,7 @@ fun StoryComposer() {
             Spacer(Modifier.height(14.dp))
             Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Panel), contentAlignment = Alignment.Center) {
                 if (isVideo) AndroidView(
-                    factory = { c -> VideoView(c).apply { setVideoURI(uri); setOnPreparedListener { it.isLooping = true; it.setVolume(0f, 0f); start() } } },
+                    factory = { c -> VideoView(c).apply { setVideoURI(uri); setOnPreparedListener { it.isLooping = true; start() } } },
                     modifier = Modifier.fillMaxSize(), onRelease = { it.stopPlayback() }
                 ) else AsyncImage(uri, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             }

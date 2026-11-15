@@ -62,7 +62,10 @@ import com.xcluice.app.ui.T
 import com.xcluice.app.ui.pressable
 
 class MainActivity : ComponentActivity() {
-    override fun onStart() { super.onStart(); App.onOpen() }
+    override fun onStart() { super.onStart(); App.foreground = true; App.onOpen() }
+    override fun onStop() { super.onStop(); App.foreground = false }
+
+    override fun onNewIntent(i: android.content.Intent) { super.onNewIntent(i); if (i.hasExtra("tab")) App.tab = i.getIntExtra("tab", 0) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -70,6 +73,10 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(AColor.TRANSPARENT)
         )
         super.onCreate(savedInstanceState)
+        com.xcluice.app.data.Notifier.setup(applicationContext)
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 11)
+        App.tab = intent?.getIntExtra("tab", App.tab) ?: App.tab
         setContent { Root() }
     }
 }

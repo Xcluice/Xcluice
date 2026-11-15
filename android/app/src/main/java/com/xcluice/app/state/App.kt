@@ -61,7 +61,7 @@ object App {
     var search by mutableStateOf("")
     var editingProfile by mutableStateOf(false)
     var ready by mutableStateOf(false)
-    var sound by mutableStateOf(true)
+    @Volatile var foreground = true
     private var firstOpen = true
     var confirm by mutableStateOf<Confirm?>(null)
 
@@ -91,7 +91,6 @@ object App {
     private val seenIds = HashSet<Long>()
     val renderedIds = HashSet<Long>()
     private var lastId: Long? = null
-    private var firstFetch = true
     private var tempSeq = -1L
     private var reactionPending = 0
     private var lastTyping = 0L
@@ -117,7 +116,6 @@ object App {
         }
         if (Api.refreshToken == null) user = null
         guest = prefs.getBoolean("guest", false)
-        sound = prefs.getBoolean("sound", true); com.xcluice.app.data.Sfx.enabled = sound
         scope.launch {
             val u = user
             if (u != null) {
@@ -207,6 +205,41 @@ object App {
         }
     }
 
+    private fun notifyFresh(fresh: List<Msg>) {
+        val me = user?.id ?: return
+        val base = prefs.getLong("n_msg", -1L)
+        val max = fresh.maxOf { it.id }
+        if (base < 0) { prefs.edit().putLong("n_msg", max).apply(); return }
+        val mine = fresh.filter { it.id > base && it.uid != me && it.toUid == me }
+        if (max > base) prefs.edit().putLong("n_msg", max).apply()
+        if (!foreground) com.xcluice.app.data.Notifier.messages(appCtx, mine.map { it.name to (if (it.isAudio) "Voice message" else it.text) })
+    }
+
+    /** Background check used by WorkManager (also safe to call while the process is alive). */
+    suspend fun checkNotifications() {
+        val me = user ?: return
+        if (Api.token == null) return
+        val base = prefs.getLong("n_msg", -1L)
+        if (base < 0) { Api.messages(null)?.maxOfOrNull { it.id }?.let { prefs.edit().putLong("n_msg", it).apply() } }
+        else {
+            val rows = Api.messages(base)
+            if (rows != null && rows.isNotEmpty()) {
+                prefs.edit().putLong("n_msg", rows.maxOf { it.id }).apply()
+                com.xcluice.app.data.Notifier.messages(appCtx, rows.filter { it.uid != me.id && it.toUid == me.id }.map { it.name to (if (it.isAudio) "Voice message" else it.text) })
+            }
+        }
+        val pb = prefs.getLong("n_post", -1L)
+        val latest = Api.posts(10)
+        if (latest != null && latest.isNotEmpty()) {
+            val max = latest.maxOf { it.id }
+            if (pb < 0) prefs.edit().putLong("n_post", max).apply()
+            else if (max > pb) {
+                prefs.edit().putLong("n_post", max).apply()
+                com.xcluice.app.data.Notifier.posts(appCtx, latest.filter { it.id > pb && !it.authorEmail.equals(me.email, true) })
+            }
+        }
+    }
+
     /** Called every time the app comes to the foreground. */
     fun onOpen() {
         if (firstOpen) { firstOpen = false; return }
@@ -218,7 +251,6 @@ object App {
         }
     }
 
-    fun setSound(on: Boolean) { sound = on; com.xcluice.app.data.Sfx.enabled = on; prefs.edit().putBoolean("sound", on).apply(); if (on) com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.DONE) }
 
     fun isVerified(uid: String?, email: String?): Boolean =
         (uid != null && uid in verifiedIds) || (!email.isNullOrBlank() && email.lowercase() in verifiedEmails)
@@ -235,6 +267,7 @@ object App {
             val all = rows + pins.filter { it.id !in seen }
             posts = all.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs })
             postsMore = rows.size == 30
+            if (foreground) rows.maxOfOrNull { it.id }?.let { m -> if (m > prefs.getLong("n_post", -1L)) prefs.edit().putLong("n_post", m).apply() }
         }
         postsLoading = false
     }
@@ -264,7 +297,6 @@ object App {
         if (u == null) { toast("Sign in to like posts"); return }
         val was = p.id in liked
         liked = if (was) liked - p.id else liked + p.id
-        if (!was) com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.LIKE)
         posts = posts.map { if (it.id == p.id) it.copy(likes = maxOf(0, it.likes + if (was) -1 else 1)) else it }
         scope.launch { if (was) Api.unlike(p.id, u.id) else Api.like(p.id, u.id) }
     }
@@ -342,7 +374,6 @@ object App {
     fun toggleFollow(id: String) {
         val u = user ?: return
         val was = isFollowing(id)
-        com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.TAP)
         follows = if (was) follows.filter { !(it.first == u.id && it.second == id) } else follows + (u.id to id)
         counts[id]?.let { c -> if (c.first != null) counts[id] = (c.first!! + if (was) -1 else 1) to c.second }
         scope.launch {
@@ -374,7 +405,6 @@ object App {
         val q = queue.filter { storiesOf(it).isNotEmpty() }
         if (q.isEmpty()) return
         storyU = u.coerceIn(0, q.size - 1); storyI = i; storyQueue = q
-        com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.STORY)
     }
 
     fun closeStories() { storyQueue = null }
@@ -463,9 +493,7 @@ object App {
         if (fresh.isEmpty()) return
         messages = messages.filter { !it.temp } + fresh
         lastId = rows.last().id
-        val me = user?.id
-        if (me != null && !firstFetch && fresh.any { it.uid != me && it.toUid == me }) com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.RECV)
-        firstFetch = false
+        notifyFresh(fresh)
     }
 
     private suspend fun syncState() {
@@ -513,7 +541,6 @@ object App {
         val now = System.currentTimeMillis()
         val temp = Msg(tid, u.id, u.displayName, text, to, rep?.id, java.time.Instant.now().toString(), now, true)
         messages = messages + temp
-        com.xcluice.app.data.Sfx.play(com.xcluice.app.data.Sfx.K.SEND)
         scope.launch {
             val saved = Api.sendMessage(u.id, u.displayName, text, to, rep?.id?.takeIf { it > 0 })
             if (saved == null) {

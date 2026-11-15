@@ -282,10 +282,6 @@ fun EditProfileSheet() {
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Hair))
-                Row(Modifier.fillMaxWidth().pressable(true, 0.97f) { App.setSound(!App.sound) }, verticalAlignment = Alignment.CenterVertically) {
-                    T("Sounds", 15.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    T(if (App.sound) "On" else "Off", 14.sp, FontWeight.Bold, if (App.sound) Color.White else Muted)
-                }
                 Row(Modifier.fillMaxWidth().pressable(true, 0.97f) { pwOpen = !pwOpen }, verticalAlignment = Alignment.CenterVertically) {
                     T("Change password", 15.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     Box(Modifier.graphicsLayerRot(if (pwOpen) 270f else 180f)) { Glyph(G.BACK, 18.dp, Muted) }

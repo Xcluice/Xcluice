@@ -101,6 +101,10 @@ fun PostViewer() {
                     Header(v, ctx)
                     HtmlFrame(v.fileUrl, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp).clip(RoundedCornerShape(16.dp)))
                 }
+                v.hasRealFile && isVideoUrl(v.fileUrl) -> {
+                    Header(v, ctx)
+                    VideoPlayer(v.fileUrl, Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp).clip(RoundedCornerShape(16.dp)))
+                }
                 v.hasRealFile && isPdf -> {
                     Header(v, ctx)
                     PdfView(v.fileUrl, Modifier.weight(1f).fillMaxWidth())
@@ -222,4 +226,26 @@ private fun PdfPage(r: PdfRenderer, i: Int, wPx: Int) {
     val b = bmp
     if (b != null) Image(b.asImageBitmap(), null, contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)))
     else Box(Modifier.fillMaxWidth().aspectRatio(0.72f).clip(RoundedCornerShape(6.dp)).background(Panel), contentAlignment = Alignment.Center) { Spinner(24.dp) }
+}
+
+
+private fun isVideoUrl(u: String) = u.substringBefore('?').substringAfterLast('.', "").lowercase() in listOf("mp4", "webm", "mov", "mkv", "3gp", "m4v")
+
+@Composable
+private fun VideoPlayer(url: String, modifier: Modifier) {
+    androidx.compose.foundation.layout.Box(modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        AndroidView(
+            factory = { c ->
+                val vv = android.widget.VideoView(c)
+                val mc = android.widget.MediaController(c)
+                mc.setAnchorView(vv)
+                vv.setMediaController(mc)
+                vv.setVideoURI(android.net.Uri.parse(url))
+                vv.setOnPreparedListener { it.setVolume(1f, 1f); vv.start() }
+                vv.layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+                vv
+            },
+            modifier = Modifier.fillMaxSize(), onRelease = { it.stopPlayback() }
+        )
+    }
 }
