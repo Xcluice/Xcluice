@@ -28,6 +28,7 @@ import com.xcluice.app.data.isImageUrl
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
@@ -565,32 +566,38 @@ object App {
         val to = thread?.uid ?: return
         val rep = reply; reply = null
         val tid = tempSeq--
-        val now = System.currentTimeMillis()
-        val temp = Msg(tid, u.id, u.displayName, text, to, rep?.id, java.time.Instant.now().toString(), now, true)
-        messages = messages + temp
-        scope.launch {
-            val saved = Api.sendMessage(u.id, u.displayName, text, to, rep?.id?.takeIf { it > 0 })
-            if (saved == null) {
-                messages = messages.filter { it.id != tid }; toast("Message not sent"); return@launch
-            }
-            seenIds.add(saved.id); renderedIds.add(saved.id)
-            messages = if (messages.any { it.id == saved.id }) messages.filter { it.id != tid }
-            else messages.map { if (it.id == tid) saved else it }
-            val l = lastId
-            if (l == null || saved.id > l) lastId = saved.id
+        messages = messages + Msg(tid, u.id, u.displayName, text, to, rep?.id, java.time.Instant.now().toString(), System.currentTimeMillis(), true)
+        scope.launch { deliver(u, tid, text, to, rep?.id) }
+    }
+
+    private suspend fun deliver(u: User, tid: Long, text: String, to: String, replyId: Long?) {
+        val saved = Api.sendMessage(u.id, u.displayName, text, to, replyId?.takeIf { it > 0 })
+        if (saved == null) {
+            messages = messages.filter { it.id != tid }; toast("Message not sent"); return
         }
+        seenIds.add(saved.id); renderedIds.add(saved.id)
+        messages = if (messages.any { it.id == saved.id }) messages.filter { it.id != tid }
+        else messages.map { if (it.id == tid) saved else it }
+        val l = lastId
+        if (l == null || saved.id > l) lastId = saved.id
     }
 
     fun sendVoice(f: File, secs: Int) {
         val u = user ?: return
+        val to = thread?.uid ?: return
+        val rep = reply; reply = null
+        val tid = tempSeq--
+        val d = maxOf(1, secs)
+        // show the bubble instantly, playable from the local file, then upload in the background
+        messages = messages + Msg(tid, u.id, u.displayName, "[AUDIO::${f.absolutePath}#d=$d]", to, rep?.id, java.time.Instant.now().toString(), System.currentTimeMillis(), true)
         scope.launch {
-            toast("Sending voice message…")
-            val bytes = runCatching { f.readBytes() }.getOrNull()
-            if (bytes == null) { toast("Voice upload failed"); return@launch }
-            val url = Api.upload("voice_${u.username}_${System.currentTimeMillis()}.m4a", "audio/mp4", bytes)
+            val bytes = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { f.readBytes() }.getOrNull() }
+            val url = bytes?.let { Api.upload("voice_${u.username}_${System.currentTimeMillis()}.m4a", "audio/mp4", it) }
+            if (url == null) {
+                messages = messages.filter { it.id != tid }; toast("Voice upload failed. Check your connection"); return@launch
+            }
             runCatching { f.delete() }
-            if (url == null) { toast("Voice upload failed"); return@launch }
-            post("[AUDIO::$url#d=${maxOf(1, secs)}]")
+            deliver(u, tid, "[AUDIO::$url#d=$d]", to, rep?.id)
         }
     }
 
