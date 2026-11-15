@@ -201,7 +201,7 @@ private fun ThreadHeader(person: ChatUser) {
             contentAlignment = Alignment.Center
         ) { Glyph(G.BACK, 22.dp, Color.White, sw = 2.4f) }
         Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Avatar(person.photo, person.email.ifBlank { person.name }, 38.dp)
+            Avatar(person.photo, person.email.ifBlank { person.name }, 38.dp, Modifier.pressable(true, 0.88f) { App.openProfile(com.xcluice.app.data.Who(person.name, person.email, person.photo, person.uid)) })
             if (active) {
                 val t = rememberInfiniteTransition(label = "hd")
                 val s by t.animateFloat(0.85f, 1.15f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "s")

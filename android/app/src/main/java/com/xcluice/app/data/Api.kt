@@ -201,6 +201,12 @@ object Api {
         return getArr(p)?.let { parsePosts(it) }
     }
 
+    suspend fun postsByAuthor(email: String): List<Post>? =
+        getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=100")?.let { parsePosts(it) }
+
+    suspend fun updatePost(id: Long, title: String, subject: String): Boolean =
+        call { req("/rest/v1/homework?id=eq.$id").header("Content-Type", "application/json").patch(jsonBody(JSONObject().put("title", title).put("subject", subject))) }.first in 200..299
+
     suspend fun pinned(): List<Post> =
         getArr("/rest/v1/homework?order=created_at.desc&pinned=eq.true")?.let { parsePosts(it) } ?: emptyList()
 

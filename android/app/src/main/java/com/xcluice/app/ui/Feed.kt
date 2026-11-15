@@ -100,16 +100,6 @@ fun FeedTab() {
                         if (App.postsLoading) Spinner(20.dp) else Glyph(G.REFRESH, 18.dp, Color.White)
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FILTERS.forEachIndexed { i, f ->
-                        val on = App.filter == i
-                        val bg by animateColorAsState(if (on) Color.White else Glass, tween(220), label = "pill")
-                        Box(Modifier.pressable(true, 0.92f) { App.filter = i }.clip(CircleShape).background(bg).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            T(f, 14.sp, FontWeight.SemiBold, if (on) Color.Black else Color.White)
-                        }
-                    }
-                }
             }
             if (list.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -164,7 +154,7 @@ private fun PostCard(p: Post, index: Int) {
             if (p.pinned) Box(Modifier.align(Alignment.TopStart).padding(10.dp).clip(CircleShape).background(Color(0xCC000000)).padding(horizontal = 9.dp, vertical = 3.dp)) { T("PINNED", 9.sp, FontWeight.Bold, spacing = 1.sp) }
         }
         Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-            Avatar(p.authorPhoto, p.authorEmail.ifBlank { p.authorName }, 36.dp)
+            Avatar(p.authorPhoto, p.authorEmail.ifBlank { p.authorName }, 36.dp, Modifier.pressable(true, 0.88f) { App.openProfile(com.xcluice.app.data.Who(p.authorName, p.authorEmail, p.authorPhoto, null)) })
             Column(Modifier.weight(1f)) {
                 T(p.headline, 15.sp, FontWeight.SemiBold, maxLines = 2, lineHeight = 20.sp)
                 Spacer(Modifier.height(4.dp))
@@ -200,12 +190,13 @@ fun PostViewer() {
         Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(36.dp).pressable(true, 0.86f) { App.viewing = null }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.CLOSE, 18.dp, Color.White) }
-                Avatar(v.authorPhoto, v.authorEmail.ifBlank { v.authorName }, 34.dp)
+                Avatar(v.authorPhoto, v.authorEmail.ifBlank { v.authorName }, 34.dp, Modifier.pressable(true, 0.88f) { App.viewing = null; App.openProfile(com.xcluice.app.data.Who(v.authorName, v.authorEmail, v.authorPhoto, null)) })
                 Column(Modifier.weight(1f)) {
                     T(v.authorName, 15.sp, FontWeight.SemiBold, maxLines = 1)
                     T(agoShort(v.createdMs) + " ago", 12.sp, color = Muted)
                 }
                 if (App.user?.email?.equals(v.authorEmail, true) == true) {
+                    Box(Modifier.size(36.dp).pressable(true, 0.86f) { App.editing = v }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.EDIT, 18.dp, Color.White) }
                     Box(Modifier.size(36.dp).pressable(true, 0.86f) { App.deletePost(v) }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.TRASH, 18.dp, Color.White) }
                 }
             }
@@ -234,20 +225,22 @@ fun PostViewer() {
 
 @Composable
 fun Composer() {
-    BackHandler(App.composing) { App.composing = false }
-    AnimatedVisibility(App.composing, enter = slideInVertically(tween(360, easing = OutExpo)) { it } + fadeIn(), exit = slideOutVertically(tween(220)) { it } + fadeOut()) {
-        var text by remember { mutableStateOf("") }
+    val open = App.composing || App.editing != null
+    BackHandler(open) { App.composing = false; App.editing = null }
+    AnimatedVisibility(open, enter = slideInVertically(tween(360, easing = OutExpo)) { it } + fadeIn(), exit = slideOutVertically(tween(220)) { it } + fadeOut()) {
+        val ed = remember { App.editing }
+        var text by remember { mutableStateOf(ed?.subject ?: "") }
         var uri by remember { mutableStateOf<Uri?>(null) }
         val ctx = LocalContext.current
         val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
-        Box(Modifier.fillMaxSize().background(Color(0x99000000)).pointerInput(Unit) { detectTapGestures { App.composing = false } }, contentAlignment = Alignment.BottomCenter) {
+        Box(Modifier.fillMaxSize().background(Color(0x99000000)).pointerInput(Unit) { detectTapGestures { App.composing = false; App.editing = null } }, contentAlignment = Alignment.BottomCenter) {
             Column(
                 Modifier.fillMaxWidth().navigationBarsPadding().imePadding().clip(RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)).background(Panel2)
                     .pointerInput(Unit) { detectTapGestures { } }.padding(18.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    T("New post", 19.sp, FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Box(Modifier.size(34.dp).pressable(true, 0.86f) { App.composing = false }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.CLOSE, 16.dp, Color.White) }
+                    T(if (ed != null) "Edit post" else "New post", 19.sp, FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Box(Modifier.size(34.dp).pressable(true, 0.86f) { App.composing = false; App.editing = null }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.CLOSE, 16.dp, Color.White) }
                 }
                 Spacer(Modifier.height(14.dp))
                 BasicTextField(
@@ -263,13 +256,14 @@ fun Composer() {
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
+                    if (ed == null) Row(
                         Modifier.pressable(true, 0.92f) { pick.launch("*/*") }.clip(CircleShape).background(Glass).padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) { Glyph(G.IMAGE, 18.dp, Color.White); T(if (uri == null) "Attach file" else "File attached", 14.sp, FontWeight.SemiBold) }
                     Spacer(Modifier.weight(1f))
                     Box(
                         Modifier.height(46.dp).width(110.dp).pressable(text.isNotBlank() || uri != null, 0.94f) {
+                            if (ed != null) { App.editPost(ed, text); App.editing = null; return@pressable }
                             var bytes: ByteArray? = null; var mime: String? = null; var ext: String? = null
                             uri?.let { u ->
                                 bytes = runCatching { ctx.contentResolver.openInputStream(u)?.use { it.readBytes() } }.getOrNull()
@@ -280,7 +274,7 @@ fun Composer() {
                             text = ""; uri = null; App.composing = false
                         }.clip(CircleShape).background(if (text.isNotBlank() || uri != null) Color.White else Glass),
                         contentAlignment = Alignment.Center
-                    ) { T("Post", 15.sp, FontWeight.Bold, if (text.isNotBlank() || uri != null) Color.Black else Muted) }
+                    ) { T(if (ed != null) "Save" else "Post", 15.sp, FontWeight.Bold, if (text.isNotBlank() || uri != null) Color.Black else Muted) }
                 }
             }
         }

@@ -142,14 +142,5 @@ private fun DrawScope.drawIntro(t: Float, parts: List<Part>) {
         val maxR = size.maxDimension * 0.7f
         drawCircle(Color.White.copy(alpha = 1f - e), maxR * e, Offset(cx, cy), style = Stroke(3.dp.toPx() * (1f - e) + 0.5f))
         drawCircle(Color.White.copy(alpha = (1f - e) * 0.5f), maxR * 0.7f * easeOut(q * 0.9f), Offset(cx, cy), style = Stroke(1.5f.dp.toPx()))
-        for (pt in parts) {
-            val d = size.minDimension * 0.62f * pt.speed * e
-            val fade = 1f - easeInOut((q - 0.3f) / 0.7f)
-            drawCircle(
-                pt.color.copy(alpha = fade),
-                pt.size.dp.toPx() * (1f - 0.5f * e),
-                Offset(cx + cos(pt.ang) * d, cy + sin(pt.ang) * d)
-            )
-        }
     }
 }

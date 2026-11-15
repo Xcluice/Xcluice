@@ -106,6 +106,7 @@ private fun MainShell() {
             }
         }
         BottomBar(Modifier.align(Alignment.BottomCenter))
+        com.xcluice.app.ui.ProfileOverlay()
         PostViewer()
         Composer()
     }

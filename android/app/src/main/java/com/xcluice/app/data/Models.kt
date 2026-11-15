@@ -37,6 +37,8 @@ data class Post(
     val headline: String get() = subject.ifBlank { title }.ifBlank { "Untitled" }
 }
 
+data class Who(val name: String, val email: String, val photo: String?, val uid: String?)
+
 data class ChatUser(
     val uid: String,
     val name: String,

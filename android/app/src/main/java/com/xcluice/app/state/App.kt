@@ -39,6 +39,8 @@ object App {
     var viewing by mutableStateOf<Post?>(null)
     var composing by mutableStateOf(false)
     var tick by mutableLongStateOf(0L)
+    var editing by mutableStateOf<Post?>(null)
+    var profile by mutableStateOf<com.xcluice.app.data.Who?>(null)
 
     // ---- feed ----
     var posts by mutableStateOf<List<Post>>(emptyList())
@@ -226,6 +228,21 @@ object App {
             }
             val ok = Api.createPost(u, subject.take(60).ifBlank { "Post" }, subject, url)
             if (ok) { toast("Posted"); loadPosts() } else toast("Couldn't post")
+        }
+    }
+
+    fun openProfile(w: com.xcluice.app.data.Who) { profile = w }
+
+    fun editPost(p: Post, text: String) {
+        val t = text.trim()
+        if (t.isEmpty()) return
+        scope.launch {
+            if (Api.updatePost(p.id, t.take(60), t)) {
+                val f = { x: Post -> if (x.id == p.id) x.copy(title = t.take(60), subject = t) else x }
+                posts = posts.map(f)
+                viewing = viewing?.let(f)
+                toast("Post updated")
+            } else toast("Couldn't update post")
         }
     }
 

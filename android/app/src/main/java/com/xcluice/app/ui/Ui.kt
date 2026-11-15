@@ -126,7 +126,7 @@ fun Modifier.enter(index: Int = 0, dist: Dp = 36.dp): Modifier = composed {
 
 enum class G {
     BACK, SEND, MIC, SEARCH, CHATPLUS, HEART, PLAY, PAUSE, TRASH, CLOSE, PLUS, REPLY, COPY,
-    FEED, CHAT, ME, EYE, OPEN, CHECK, IMAGE, REFRESH
+    FEED, CHAT, ME, EYE, OPEN, CHECK, IMAGE, REFRESH, EDIT
 }
 
 @Composable
@@ -223,6 +223,10 @@ private fun DrawScope.drawGlyph(g: G, c: Color, filled: Boolean, sw: Float) {
             drawRoundRect(c, Offset(3f, 5f), Size(18f, 14f), CornerRadius(3f, 3f), style = st)
             drawCircle(c, 1.6f, Offset(9f, 10f))
             drawPath(path { moveTo(3f, 17f); lineTo(9f, 12.5f); lineTo(14f, 16f); lineTo(17f, 13.5f); lineTo(21f, 17f) }, c, style = st)
+        }
+        G.EDIT -> {
+            drawPath(path { moveTo(4f, 20f); lineTo(4.8f, 15.5f); lineTo(16f, 4.3f); quadraticBezierTo(17.3f, 3f, 18.7f, 4.3f); lineTo(19.7f, 5.3f); quadraticBezierTo(21f, 6.7f, 19.7f, 8f); lineTo(8.5f, 19.2f); close() }, c, style = st)
+            drawLine(c, Offset(14f, 6.5f), Offset(17.5f, 10f), sw, StrokeCap.Round)
         }
         G.REFRESH -> {
             drawArc(c, -50f, 280f, false, Offset(4f, 4f), Size(16f, 16f), style = st)
