@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okio.buffer
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -258,7 +259,7 @@ object Api {
                 var n = 0L
                 override fun write(source: okio.Buffer, byteCount: Long) { super.write(source, byteCount); n += byteCount; cb(n) }
             }
-            val bs = okio.buffer(fs)
+            val bs = fs.buffer()
             d.writeTo(bs); bs.flush()
         }
     }
