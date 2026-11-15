@@ -95,10 +95,21 @@ object App {
     private var reactionPending = 0
     private var lastTyping = 0L
     private var loopsOn = false
+    private var backgrounded = false
     private var loopJob: Job? = null
     private var rt: Realtime? = null
 
+    private var inited = false
+    fun ensureInit(ctx: Context) { if (!inited) init(ctx) }
+
+    var pushToken: String? = null
+    fun pushActive(): Boolean = prefs.getString("push_token", null) != null
+    fun markPushReady(t: String?) { pushToken = t; prefs.edit().apply { if (t == null) remove("push_token") else putString("push_token", t) }.apply() }
+    fun advanceMsgMark(id: Long) { if (id > prefs.getLong("n_msg", -1L)) prefs.edit().putLong("n_msg", id).apply() }
+    fun advancePostMark(id: Long) { if (id > prefs.getLong("n_post", -1L)) prefs.edit().putLong("n_post", id).apply() }
+
     fun init(ctx: Context) {
+        inited = true
         appCtx = ctx.applicationContext
         prefs = ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE)
         runCatching { val a = JSONArray(prefs.getString("seen", "[]")); seen = (0 until a.length()).map { a.getLong(it) }.toSet() }
@@ -166,7 +177,12 @@ object App {
 
     fun signOut() {
         loopsOn = false; loopJob?.cancel(); rt?.stop(); rt = null
-        Api.clearSession(); saveSession()
+        val pt = pushToken ?: prefs.getString("push_token", null)
+        markPushReady(null)
+        scope.launch {
+            if (pt != null) runCatching { kotlinx.coroutines.withTimeoutOrNull(3000) { Api.unregisterDevice(pt) } }
+            Api.clearSession(); saveSession()
+        }
         user = null; guest = false; thread = null; tab = 0
         messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false
         follows = emptyList(); stories = emptyList(); storyQueue = null; profile = null
@@ -190,6 +206,7 @@ object App {
             jobs += scope.launch { user?.let { x -> Api.follows(x.id)?.let { follows = it } } }
             jobs += scope.launch { fetchUsers() }
             startChat()
+            com.xcluice.app.data.Push.register()
         }
         jobs.forEach { it.join() }
         prefetchImages()
@@ -471,6 +488,8 @@ object App {
             fetchMessages(); user?.let { Api.presence(it) }; fetchUsers(); syncState()
             var t = 0
             while (loopsOn) {
+                if (!foreground) { delay(4000); backgrounded = true; continue }
+                if (backgrounded) { backgrounded = false; fetchMessages(); syncState() }
                 delay(1000)
                 t++
                 tick = System.currentTimeMillis()

@@ -60,6 +60,15 @@ object Notifier {
         }
     }
 
+    fun postText(ctx: Context, title: String, text: String) {
+        if (!allowed(ctx)) return
+        val n = NotificationCompat.Builder(ctx, CH_POST)
+            .setSmallIcon(R.drawable.ic_notif).setContentTitle(title).setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true).setContentIntent(open(ctx, 0)).build()
+        runCatching { NotificationManagerCompat.from(ctx).notify(7001, n) }
+    }
+
     fun posts(ctx: Context, items: List<Post>) {
         if (items.isEmpty() || !allowed(ctx)) return
         val p = items.first()
@@ -75,7 +84,7 @@ object Notifier {
 
 class CheckWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result {
-        if (!App.foreground) runCatching { App.checkNotifications() }
+        if (!App.foreground && !App.pushActive()) runCatching { App.checkNotifications() }
         return Result.success()
     }
 }

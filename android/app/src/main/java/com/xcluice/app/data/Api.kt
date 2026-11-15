@@ -374,6 +374,12 @@ object Api {
         }
     }
 
+    suspend fun registerDevice(uid: String, token: String): Boolean =
+        call { req("/rest/v1/device_tokens?on_conflict=token").header("Content-Type", "application/json").header("Prefer", "resolution=merge-duplicates,return=minimal").post(jsonBody(JSONObject().put("token", token).put("user_id", uid))) }.first in 200..299
+
+    suspend fun unregisterDevice(token: String): Boolean =
+        call { req("/rest/v1/device_tokens?token=eq.${enc(token)}").delete() }.first in 200..299
+
     suspend fun follow(me: String, other: String): Boolean =
         call { req("/rest/v1/follows").header("Content-Type", "application/json").header("Prefer", "resolution=ignore-duplicates,return=minimal").post(jsonBody(JSONObject().put("follower", me).put("following", other))) }.first in 200..299
 
