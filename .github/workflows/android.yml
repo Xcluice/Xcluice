@@ -1,0 +1,48 @@
+name: Android release APK
+on:
+  push:
+    branches: [android-app]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build release APK
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle assembleRelease --no-daemon --stacktrace -PbuildNum=${{ github.run_number }} 2>&1 | tee build.log
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk Xcluice.apk
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-build-${{ github.run_number }}
+          name: Xcluice app build ${{ github.run_number }}
+          files: Xcluice.apk
+      - name: Collect errors
+        if: failure()
+        run: |
+          grep -E "^e: |error:|What went wrong|FAILED|Could not" -A4 android/build.log | head -200 > errors.txt || true
+          [ -s errors.txt ] || tail -80 android/build.log > errors.txt
+      - name: Publish failure log
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-fail-${{ github.run_number }}
+          name: FAILED build ${{ github.run_number }}
+          prerelease: true
+          body_path: errors.txt
