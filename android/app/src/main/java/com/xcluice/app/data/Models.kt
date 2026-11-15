@@ -1,5 +1,7 @@
 package com.xcluice.app.data
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import java.time.OffsetDateTime
 
 object Cfg {
