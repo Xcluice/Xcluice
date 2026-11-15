@@ -385,6 +385,7 @@ private fun BubbleRow(
                             }
                         }
                         if (m.isAudio) VoiceBubble(m, isMe)
+                        else if (firstUrl(m.text) != null) LinkText(m.text, 16.sp, if (isMe) Color.Black else Color.White, lineHeight = 22.sp, linkColor = if (isMe) Color.Black else Color.White)
                         else T(m.text, 16.sp, color = if (isMe) Color.Black else Color.White, lineHeight = 22.sp)
                     }
                 }

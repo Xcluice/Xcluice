@@ -126,7 +126,7 @@ fun Modifier.enter(index: Int = 0, dist: Dp = 36.dp): Modifier = composed {
 
 enum class G {
     BACK, SEND, MIC, SEARCH, CHATPLUS, HEART, PLAY, PAUSE, TRASH, CLOSE, PLUS, REPLY, COPY,
-    FEED, CHAT, ME, EYE, OPEN, CHECK, IMAGE, REFRESH, EDIT
+    FEED, CHAT, ME, EYE, OPEN, CHECK, IMAGE, REFRESH, EDIT, LINK, DOWNLOAD, PIN, SHARE, CAMERA
 }
 
 @Composable
@@ -223,6 +223,30 @@ private fun DrawScope.drawGlyph(g: G, c: Color, filled: Boolean, sw: Float) {
             drawRoundRect(c, Offset(3f, 5f), Size(18f, 14f), CornerRadius(3f, 3f), style = st)
             drawCircle(c, 1.6f, Offset(9f, 10f))
             drawPath(path { moveTo(3f, 17f); lineTo(9f, 12.5f); lineTo(14f, 16f); lineTo(17f, 13.5f); lineTo(21f, 17f) }, c, style = st)
+        }
+        G.LINK -> withTransform({ rotate(-45f, Offset(12f, 12f)) }) {
+            drawRoundRect(c, Offset(1.5f, 8.5f), Size(11.5f, 7f), CornerRadius(3.5f, 3.5f), style = st)
+            drawRoundRect(c, Offset(11f, 8.5f), Size(11.5f, 7f), CornerRadius(3.5f, 3.5f), style = st)
+        }
+        G.DOWNLOAD -> {
+            drawLine(c, Offset(12f, 4f), Offset(12f, 15f), sw, StrokeCap.Round)
+            drawPath(path { moveTo(7f, 11f); lineTo(12f, 16f); lineTo(17f, 11f) }, c, style = st)
+            drawPath(path { moveTo(4f, 18f); lineTo(4f, 20f); lineTo(20f, 20f); lineTo(20f, 18f) }, c, style = st)
+        }
+        G.PIN -> {
+            drawCircle(c, 4.5f, Offset(12f, 8f), style = if (filled) Fill else st)
+            drawLine(c, Offset(12f, 12.5f), Offset(12f, 21f), sw, StrokeCap.Round)
+            drawLine(c, Offset(7.5f, 13f), Offset(16.5f, 13f), sw, StrokeCap.Round)
+        }
+        G.SHARE -> {
+            drawPath(path { moveTo(4f, 12f); lineTo(4f, 19f); lineTo(20f, 19f); lineTo(20f, 12f) }, c, style = st)
+            drawLine(c, Offset(12f, 15f), Offset(12f, 3.5f), sw, StrokeCap.Round)
+            drawPath(path { moveTo(8f, 7.5f); lineTo(12f, 3.5f); lineTo(16f, 7.5f) }, c, style = st)
+        }
+        G.CAMERA -> {
+            drawRoundRect(c, Offset(3f, 7f), Size(18f, 13f), CornerRadius(3f, 3f), style = st)
+            drawPath(path { moveTo(8f, 7f); lineTo(9.5f, 4f); lineTo(14.5f, 4f); lineTo(16f, 7f) }, c, style = st)
+            drawCircle(c, 3.6f, Offset(12f, 13.5f), style = st)
         }
         G.EDIT -> {
             drawPath(path { moveTo(4f, 20f); lineTo(4.8f, 15.5f); lineTo(16f, 4.3f); quadraticBezierTo(17.3f, 3f, 18.7f, 4.3f); lineTo(19.7f, 5.3f); quadraticBezierTo(21f, 6.7f, 19.7f, 8f); lineTo(8.5f, 19.2f); close() }, c, style = st)

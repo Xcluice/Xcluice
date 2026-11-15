@@ -16,7 +16,8 @@ data class User(
     val email: String,
     val displayName: String,
     val avatarUrl: String?,
-    val verified: Boolean
+    val verified: Boolean,
+    val role: String = ""
 )
 
 data class Post(
@@ -31,8 +32,14 @@ data class Post(
     val createdMs: Long,
     val likes: Long,
     val taps: Long,
-    val pinned: Boolean
+    val pinned: Boolean,
+    val linkUrl: String? = null,
+    val thumbUrl: String? = null
 ) {
+    val isShot: Boolean get() = !linkUrl.isNullOrBlank() && Regex("/link_\\d+_").containsMatchIn(fileUrl)
+    val link: String? get() = linkUrl?.takeIf { it.isNotBlank() } ?: fileUrl.takeIf { isLinkUrl(it) }
+    val linkOnly: Boolean get() = if (!linkUrl.isNullOrBlank()) isShot else isLinkUrl(fileUrl)
+    val hasRealFile: Boolean get() = fileUrl.isNotBlank() && !isShot && !isLinkUrl(fileUrl)
     val type: FileType get() = fileType(fileUrl)
     val headline: String get() = subject.ifBlank { title }.ifBlank { "Untitled" }
 }
@@ -68,6 +75,34 @@ data class Msg(
 
 data class Reaction(val messageId: Long, val uid: String, val emoji: String)
 
+data class Profile(
+    val id: String, val username: String, val name: String, val email: String, val photo: String?,
+    val role: String, val joined: String?, val verified: Boolean, val fo: Long?, val bio: String, val website: String
+)
+
+data class Story(
+    val id: Long, val uid: String, val mediaUrl: String, val kind: String, val caption: String?,
+    val createdMs: Long, val expiresMs: Long
+)
+
+fun isLinkUrl(u: String?): Boolean =
+    !u.isNullOrBlank() && Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(u) && !u.startsWith(Cfg.SB + "/storage/")
+
+fun hostOf(u: String): String =
+    runCatching { java.net.URI(u).host?.removePrefix("www.") }.getOrNull() ?: u
+
+fun normalizeLink(raw: String): String? {
+    var s = raw.trim()
+    if (s.isEmpty()) return null
+    if (!Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(s)) s = "https://$s"
+    return try {
+        val u = java.net.URI(s)
+        if (u.host == null || !u.host.contains('.') || (u.scheme != "http" && u.scheme != "https")) null else u.toString()
+    } catch (e: Exception) { null }
+}
+
+object Av { var rank by androidx.compose.runtime.mutableStateOf<Map<String, Int>>(emptyMap()) }
+
 enum class FileType { TEXT, MEDIA, DOCS, HTML, APK, ARCHIVE, OTHER }
 
 fun fileType(url: String?): FileType {
@@ -94,8 +129,8 @@ fun parseMs(s: String?): Long =
 
 fun defAvatar(key: String?): String {
     val k = (key ?: "").lowercase()
-    var n = 7L
-    for (c in k) n = (n * 31 + c.code) and 0xFFFFFFFFL
+    var n = (Av.rank[k] ?: -1).toLong()
+    if (n < 0) { n = 7L; for (c in k) n = (n * 31 + c.code) and 0xFFFFFFFFL }
     return Cfg.SITE + "/avatars/" + (n % 20 + 1) + ".svg"
 }
 

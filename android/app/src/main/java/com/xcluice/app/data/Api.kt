@@ -142,7 +142,8 @@ object Api {
                     email = o.str("email") ?: "",
                     displayName = o.str("display_name") ?: o.str("username") ?: "User",
                     avatarUrl = o.str("avatar_url"),
-                    verified = o.optBoolean("verified", false)
+                    verified = o.optBoolean("verified", false),
+                    role = o.str("role") ?: ""
                 )
             }
             kotlinx.coroutines.delay(300)
@@ -188,7 +189,9 @@ object Api {
                     createdMs = parseMs(created),
                     likes = o.optLong("likes", 0),
                     taps = o.optLong("taps", 0),
-                    pinned = o.optBoolean("pinned", false)
+                    pinned = o.optBoolean("pinned", false),
+                    linkUrl = o.str("link_url"),
+                    thumbUrl = o.str("thumb_url")
                 )
             )
         }
@@ -204,25 +207,27 @@ object Api {
     suspend fun postsByAuthor(email: String): List<Post>? =
         getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=100")?.let { parsePosts(it) }
 
-    suspend fun updatePost(id: Long, title: String, subject: String, fileUrl: String? = null): Boolean {
-        val o = JSONObject().put("title", title).put("subject", subject)
-        if (fileUrl != null) o.put("file_url", fileUrl)
-        return call { req("/rest/v1/homework?id=eq.$id").header("Content-Type", "application/json").patch(jsonBody(o)) }.first in 200..299
-    }
-
     suspend fun pinned(): List<Post> =
         getArr("/rest/v1/homework?order=created_at.desc&pinned=eq.true")?.let { parsePosts(it) } ?: emptyList()
 
-    suspend fun createPost(user: User, title: String, subject: String, fileUrl: String): Boolean {
+    suspend fun createPost(user: User, title: String, subject: String, fileUrl: String, linkUrl: String?, thumbUrl: String?): Boolean {
         val o = JSONObject().put("title", title).put("subject", subject).put("file_url", fileUrl)
+            .put("link_url", linkUrl ?: JSONObject.NULL).put("thumb_url", thumbUrl ?: JSONObject.NULL)
             .put("author_name", user.displayName).put("author_email", user.email)
             .put("author_photo", user.avatarUrl ?: JSONObject.NULL)
         val (c, _) = call { req("/rest/v1/homework").header("Content-Type", "application/json").header("Prefer", "return=minimal").post(jsonBody(o)) }
         return c in 200..299
     }
 
-    suspend fun deletePost(id: Long): Boolean =
-        call { req("/rest/v1/homework?id=eq.$id").delete() }.first in 200..299
+    suspend fun patchPost(id: Long, patch: JSONObject): Boolean {
+        val (c, b) = call { req("/rest/v1/homework?id=eq.$id").header("Content-Type", "application/json").header("Prefer", "return=representation").patch(jsonBody(patch)) }
+        return c in 200..299 && runCatching { JSONArray(b).length() > 0 }.getOrDefault(false)
+    }
+
+    suspend fun deletePost(id: Long): Boolean {
+        val (c, b) = call { req("/rest/v1/homework?id=eq.$id").header("Prefer", "return=representation").delete() }
+        return c in 200..299 && runCatching { JSONArray(b).length() > 0 }.getOrDefault(false)
+    }
 
     suspend fun myLikes(uid: String): Set<Long> {
         val a = getArr("/rest/v1/post_likes?uid=eq.${enc(uid)}&select=post_id&limit=3000") ?: return emptySet()
@@ -332,6 +337,96 @@ object Api {
 
     suspend fun clearReaction(mid: Long, uid: String) {
         call { req("/rest/v1/chat_reactions?message_id=eq.$mid&uid=eq.${enc(uid)}").delete() }
+    }
+
+    // ---------- profiles / follows / stories ----------
+    suspend fun profiles(withEmail: Boolean): List<Profile>? {
+        val sel = "id,username,display_name," + (if (withEmail) "email," else "") + "avatar_url,role,created_at,verified,followers_override,bio,website"
+        val a = getArr("/rest/v1/fosthub_users?select=$sel&limit=1000") ?: return null
+        val out = ArrayList<Profile>()
+        for (i in 0 until a.length()) {
+            val o = a.getJSONObject(i)
+            out.add(Profile(
+                o.optString("id"), o.str("username") ?: "", o.str("display_name") ?: "User", o.str("email") ?: "",
+                o.str("avatar_url"), o.str("role") ?: "", o.str("created_at"), o.optBoolean("verified", false),
+                if (o.isNull("followers_override")) null else o.optLong("followers_override"),
+                o.str("bio") ?: "", o.str("website") ?: ""
+            ))
+        }
+        return out
+    }
+
+    suspend fun follows(uid: String): List<Pair<String, String>>? {
+        val a = getArr("/rest/v1/follows?select=follower,following&or=(follower.eq.${enc(uid)},following.eq.${enc(uid)})&limit=1000") ?: return null
+        val out = ArrayList<Pair<String, String>>()
+        for (i in 0 until a.length()) { val o = a.getJSONObject(i); out.add(o.optString("follower") to o.optString("following")) }
+        return out
+    }
+
+    suspend fun followCount(col: String, id: String): Long? {
+        refreshIfNeeded()
+        return withContext(Dispatchers.IO) {
+            try {
+                http.newCall(req("/rest/v1/follows?select=follower&$col=eq.${enc(id)}").header("Prefer", "count=exact").head().build()).execute().use { r ->
+                    Regex("/(\\d+)$").find(r.header("Content-Range") ?: "")?.groupValues?.get(1)?.toLong()
+                }
+            } catch (e: Exception) { null }
+        }
+    }
+
+    suspend fun follow(me: String, other: String): Boolean =
+        call { req("/rest/v1/follows").header("Content-Type", "application/json").header("Prefer", "resolution=ignore-duplicates,return=minimal").post(jsonBody(JSONObject().put("follower", me).put("following", other))) }.first in 200..299
+
+    suspend fun unfollow(me: String, other: String): Boolean =
+        call { req("/rest/v1/follows?follower=eq.${enc(me)}&following=eq.${enc(other)}").delete() }.first in 200..299
+
+    suspend fun stories(): List<Story>? {
+        val a = getArr("/rest/v1/stories?select=id,uid,media_url,kind,caption,created_at,expires_at&expires_at=gt.${enc(java.time.Instant.now().toString())}&order=created_at.asc&limit=500") ?: return null
+        val out = ArrayList<Story>()
+        for (i in 0 until a.length()) {
+            val o = a.getJSONObject(i)
+            out.add(Story(o.optLong("id"), o.optString("uid"), o.optString("media_url"), o.str("kind") ?: "image", o.str("caption"), parseMs(o.str("created_at")), parseMs(o.str("expires_at"))))
+        }
+        return out
+    }
+
+    suspend fun createStory(uid: String, url: String, kind: String, caption: String?): Boolean =
+        call { req("/rest/v1/stories").header("Content-Type", "application/json").header("Prefer", "return=minimal").post(jsonBody(JSONObject().put("uid", uid).put("media_url", url).put("kind", kind).put("caption", caption ?: JSONObject.NULL))) }.first in 200..299
+
+    suspend fun deleteStory(id: Long): Boolean =
+        call { req("/rest/v1/stories?id=eq.$id").delete() }.first in 200..299
+
+    /** 0 ok, 1 username taken, 2 failed */
+    suspend fun updateProfile(u: User, name: String, username: String, bio: String, site: String): Int {
+        val body = JSONObject().put("display_name", name).put("username", username).put("bio", bio).put("website", site)
+        val (c, b) = call { req("/rest/v1/fosthub_users?id=eq.${u.id}&select=id,username,display_name,bio,website").header("Content-Type", "application/json").header("Prefer", "return=representation").patch(jsonBody(body)) }
+        if (c == 409) return 1
+        if (c !in 200..299 || !runCatching { JSONArray(b).length() > 0 }.getOrDefault(false)) return 2
+        call { req("/rest/v1/chat_users?uid=eq.${enc(u.id)}").header("Content-Type", "application/json").patch(jsonBody(JSONObject().put("name", name))) }
+        if (u.email.isNotBlank()) call { req("/rest/v1/homework?author_email=eq.${enc(u.email)}").header("Content-Type", "application/json").patch(jsonBody(JSONObject().put("author_name", name))) }
+        return 0
+    }
+
+    /** null = ok, otherwise an error message */
+    suspend fun changePassword(email: String, old: String, new: String): String? {
+        val chk = Request.Builder().url(Cfg.SB + "/auth/v1/token?grant_type=password").header("apikey", Cfg.KEY)
+            .post(jsonBody(JSONObject().put("email", email).put("password", old))).build()
+        val r1 = withContext(Dispatchers.IO) { try { http.newCall(chk).execute().use { it.code } } catch (e: Exception) { -1 } }
+        if (r1 == -1) return "No connection"
+        if (r1 !in 200..299) return "Current password is incorrect."
+        val (c, b) = call { Request.Builder().url(Cfg.SB + "/auth/v1/user").header("apikey", Cfg.KEY).apply { token?.let { header("Authorization", "Bearer $it") } }.put(jsonBody(JSONObject().put("password", new))) }
+        if (c in 200..299) return null
+        return runCatching { JSONObject(b).let { it.str("msg") ?: it.str("message") } }.getOrNull() ?: "Couldn't change password."
+    }
+
+    suspend fun download(url: String, dest: java.io.File): Boolean = withContext(Dispatchers.IO) {
+        try {
+            http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                if (!r.isSuccessful) return@withContext false
+                r.body?.byteStream()?.use { ins -> dest.outputStream().use { ins.copyTo(it) } }
+                true
+            }
+        } catch (e: Exception) { false }
     }
 
     suspend fun fetchText(url: String): String? = withContext(Dispatchers.IO) {

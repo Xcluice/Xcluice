@@ -42,7 +42,11 @@ import androidx.compose.ui.unit.sp
 import com.xcluice.app.state.App
 import com.xcluice.app.ui.AuthScreen
 import com.xcluice.app.ui.ChatTab
-import com.xcluice.app.ui.Composer
+import com.xcluice.app.ui.PostSheet
+import com.xcluice.app.ui.ConfirmHost
+import com.xcluice.app.ui.StoryViewer
+import com.xcluice.app.ui.StoryComposer
+import com.xcluice.app.ui.EditProfileSheet
 import com.xcluice.app.ui.FeedTab
 import com.xcluice.app.ui.G
 import com.xcluice.app.ui.Glass
@@ -108,7 +112,11 @@ private fun MainShell() {
         BottomBar(Modifier.align(Alignment.BottomCenter))
         com.xcluice.app.ui.ProfileOverlay()
         PostViewer()
-        Composer()
+        EditProfileSheet()
+        PostSheet()
+        StoryComposer()
+        StoryViewer()
+        ConfirmHost()
     }
 }
 

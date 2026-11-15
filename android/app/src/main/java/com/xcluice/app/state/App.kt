@@ -15,6 +15,10 @@ import com.xcluice.app.data.FileType
 import com.xcluice.app.data.Msg
 import com.xcluice.app.data.Post
 import com.xcluice.app.data.Reaction
+import com.xcluice.app.data.Profile
+import com.xcluice.app.data.Story
+import com.xcluice.app.data.Av
+import org.json.JSONArray
 import com.xcluice.app.data.Realtime
 import com.xcluice.app.data.User
 import com.xcluice.app.data.parseMs
@@ -27,8 +31,11 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
 
+class Confirm(val msg: String, val ok: String, val danger: Boolean, val onOk: () -> Unit)
+
 object App {
     private lateinit var prefs: SharedPreferences
+    lateinit var appCtx: Context
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // ---- navigation / session ----
@@ -41,6 +48,18 @@ object App {
     var tick by mutableLongStateOf(0L)
     var editing by mutableStateOf<Post?>(null)
     var profile by mutableStateOf<com.xcluice.app.data.Who?>(null)
+    var profiles by mutableStateOf<List<Profile>>(emptyList())
+    var follows by mutableStateOf<List<Pair<String, String>>>(emptyList())
+    val counts = mutableStateMapOf<String, Pair<Long?, Long?>>()
+    var stories by mutableStateOf<List<Story>>(emptyList())
+    var seen by mutableStateOf<Set<Long>>(emptySet())
+    var storyQueue by mutableStateOf<List<String>?>(null)
+    var storyU by mutableIntStateOf(0)
+    var storyI by mutableIntStateOf(0)
+    var storyDraft by mutableStateOf<android.net.Uri?>(null)
+    var search by mutableStateOf("")
+    var editingProfile by mutableStateOf(false)
+    var confirm by mutableStateOf<Confirm?>(null)
 
     // ---- feed ----
     var posts by mutableStateOf<List<Post>>(emptyList())
@@ -76,7 +95,9 @@ object App {
     private var rt: Realtime? = null
 
     fun init(ctx: Context) {
+        appCtx = ctx.applicationContext
         prefs = ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE)
+        runCatching { val a = JSONArray(prefs.getString("seen", "[]")); seen = (0 until a.length()).map { a.getLong(it) }.toSet() }
         Api.token = prefs.getString("access", null)
         Api.refreshToken = prefs.getString("refresh", null)
         Api.expiresAt = prefs.getLong("exp", 0L)
@@ -86,7 +107,7 @@ object App {
             runCatching {
                 val o = JSONObject(s)
                 user = User(o.getString("id"), o.optString("username"), o.optString("email"), o.optString("displayName"),
-                    if (o.isNull("avatarUrl")) null else o.optString("avatarUrl"), o.optBoolean("verified"))
+                    if (o.isNull("avatarUrl")) null else o.optString("avatarUrl"), o.optBoolean("verified"), o.optString("role"))
             }
         }
         if (Api.refreshToken == null) user = null
@@ -109,7 +130,7 @@ object App {
     private fun saveUser(u: User) {
         user = u
         prefs.edit().putString("user", JSONObject().put("id", u.id).put("username", u.username).put("email", u.email)
-            .put("displayName", u.displayName).put("avatarUrl", u.avatarUrl ?: JSONObject.NULL).put("verified", u.verified).toString()).apply()
+            .put("displayName", u.displayName).put("avatarUrl", u.avatarUrl ?: JSONObject.NULL).put("verified", u.verified).put("role", u.role).toString()).apply()
     }
 
     fun toast(s: String) {
@@ -144,6 +165,7 @@ object App {
         Api.clearSession(); saveSession()
         user = null; guest = false; thread = null; tab = 0
         messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false
+        follows = emptyList(); stories = emptyList(); storyQueue = null; profile = null
         liked = emptySet(); seenIds.clear(); renderedIds.clear(); lastId = null
         prefs.edit().remove("user").putBoolean("guest", false).apply()
     }
@@ -156,6 +178,7 @@ object App {
         if (bootedFor == key && posts.isNotEmpty()) return
         bootedFor = key
         loadPosts()
+        loadSocial()
         scope.launch { val (a, b) = Api.verified(); verifiedIds = a; verifiedEmails = b }
         user?.let { u ->
             scope.launch { liked = Api.myLikes(u.id) }
@@ -167,6 +190,7 @@ object App {
         (uid != null && uid in verifiedIds) || (!email.isNullOrBlank() && email.lowercase() in verifiedEmails)
 
     fun refresh() { scope.launch { loadPosts() } }
+    suspend fun loadPostsNow() { loadPosts() }
 
     suspend fun loadPosts() {
         postsLoading = true
@@ -196,11 +220,9 @@ object App {
         }
     }
 
-    fun visiblePosts(): List<Post> = when (filter) {
-        1 -> posts.filter { it.type == FileType.MEDIA }
-        2 -> posts.filter { it.type == FileType.DOCS }
-        3 -> posts.filter { it.type == FileType.HTML }
-        else -> posts
+    fun visiblePosts(): List<Post> {
+        val q = search.trim().lowercase()
+        return if (q.isEmpty()) posts else posts.filter { it.title.lowercase().contains(q) || it.subject.lowercase().contains(q) }
     }
 
     fun toggleLike(p: Post) {
@@ -212,50 +234,146 @@ object App {
         scope.launch { if (was) Api.unlike(p.id, u.id) else Api.like(p.id, u.id) }
     }
 
-    fun openPost(p: Post) {
-        viewing = p
+    fun open(p: Post, ctx: Context) {
         posts = posts.map { if (it.id == p.id) it.copy(taps = it.taps + 1) else it }
         scope.launch { Api.bumpTap(p.id) }
+        val l = p.link
+        if (p.linkOnly && l != null) {
+            runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(l)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        } else viewing = p
     }
 
-    fun publish(subject: String, bytes: ByteArray?, mime: String?, ext: String?) {
-        val u = user ?: return
-        scope.launch {
-            var url = ""
-            if (bytes != null && mime != null) {
-                val name = "${u.username}_${System.currentTimeMillis()}.${ext ?: "bin"}"
-                url = Api.upload(name, mime, bytes) ?: run { toast("Upload failed"); return@launch }
-            }
-            val ok = Api.createPost(u, subject.take(60).ifBlank { "Post" }, subject, url)
-            if (ok) { toast("Posted"); loadPosts() } else toast("Couldn't post")
-        }
+    fun isAdmin(): Boolean {
+        val u = user ?: return false
+        return u.email.equals("momin@" + Cfg.AUTH_DOMAIN, true) || u.role.equals("Admin", true)
     }
 
-    fun openProfile(w: com.xcluice.app.data.Who) { profile = w }
+    fun canEdit(p: Post): Boolean {
+        val u = user ?: return false
+        return isAdmin() || (p.authorEmail.isNotBlank() && u.email.equals(p.authorEmail, true))
+    }
 
-    fun editPost(p: Post, text: String, bytes: ByteArray? = null, mime: String? = null, ext: String? = null) {
-        val t = text.trim()
-        if (t.isEmpty()) return
-        val u = user
+    fun togglePin(p: Post) {
         scope.launch {
-            var newUrl: String? = null
-            if (bytes != null && mime != null && u != null) {
-                toast("Uploading…")
-                newUrl = Api.upload("${u.username}_${System.currentTimeMillis()}.${ext ?: "bin"}", mime, bytes)
-                if (newUrl == null) { toast("Upload failed"); return@launch }
-            }
-            if (Api.updatePost(p.id, t.take(60), t, newUrl)) {
-                val f = { x: Post -> if (x.id == p.id) x.copy(title = t.take(60), subject = t, fileUrl = newUrl ?: x.fileUrl) else x }
-                posts = posts.map(f)
-                viewing = viewing?.let(f)
-                toast("Post updated")
-            } else toast("Couldn't update post")
+            val next = !p.pinned
+            if (Api.patchPost(p.id, JSONObject().put("pinned", next))) { toast(if (next) "Post pinned" else "Post unpinned"); loadPosts() } else toast("Couldn't update pin")
         }
     }
 
     fun deletePost(p: Post) {
         scope.launch {
-            if (Api.deletePost(p.id)) { posts = posts.filter { it.id != p.id }; viewing = null; toast("Post deleted") } else toast("Delete failed")
+            if (Api.deletePost(p.id)) { posts = posts.filter { it.id != p.id }; viewing = null; toast("Post deleted") } else toast("Delete failed: not allowed or already removed")
+        }
+    }
+
+    fun openProfile(w: com.xcluice.app.data.Who) {
+        if (user == null) { toast("Sign in to view profiles"); return }
+        profile = w
+    }
+
+    fun ask(msg: String, ok: String, danger: Boolean, onOk: () -> Unit) { confirm = Confirm(msg, ok, danger, onOk) }
+
+    // ---------------- profiles, follows, stories ----------------
+    fun loadSocial() {
+        scope.launch {
+            Api.profiles(user != null)?.let { list ->
+                profiles = list
+                Av.rank = list.filter { it.email.isNotBlank() }
+                    .sortedBy { com.xcluice.app.data.parseMs(it.joined) }
+                    .mapIndexed { i, pr -> pr.email.lowercase() to i }.toMap()
+            }
+            user?.let { u -> Api.follows(u.id)?.let { follows = it } }
+            Api.stories()?.let { stories = it }
+        }
+    }
+
+    fun resolve(w: com.xcluice.app.data.Who): Profile {
+        profiles.firstOrNull { w.uid != null && it.id == w.uid }?.let { return it }
+        if (w.email.isNotBlank()) profiles.firstOrNull { it.email.equals(w.email, true) }?.let { return it }
+        chatUsers.firstOrNull { w.uid != null && it.uid == w.uid }?.let { return Profile(it.uid, "", it.name, it.email, it.photo, "", null, false, null, "", "") }
+        return Profile(w.uid ?: "", "", w.name, w.email, w.photo, "", null, false, null, "", "")
+    }
+
+    fun loadCounts(id: String) {
+        scope.launch { counts[id] = Api.followCount("following", id) to Api.followCount("follower", id) }
+    }
+
+    fun isFollowing(id: String): Boolean { val u = user ?: return false; return follows.any { it.first == u.id && it.second == id } }
+    fun followersOf(id: String): Long = profiles.firstOrNull { it.id == id }?.fo ?: counts[id]?.first ?: follows.count { it.second == id }.toLong()
+    fun followingOf(id: String): Long = counts[id]?.second ?: follows.count { it.first == id }.toLong()
+
+    fun toggleFollow(id: String) {
+        val u = user ?: return
+        val was = isFollowing(id)
+        follows = if (was) follows.filter { !(it.first == u.id && it.second == id) } else follows + (u.id to id)
+        counts[id]?.let { c -> if (c.first != null) counts[id] = (c.first!! + if (was) -1 else 1) to c.second }
+        scope.launch {
+            val ok = if (was) Api.unfollow(u.id, id) else Api.follow(u.id, id)
+            if (!ok) {
+                follows = if (was) follows + (u.id to id) else follows.filter { !(it.first == u.id && it.second == id) }
+                toast("Couldn't update follow")
+            }
+        }
+    }
+
+    fun storiesOf(uid: String): List<Story> = stories.filter { it.uid == uid && it.expiresMs > System.currentTimeMillis() }
+    fun hasUnseen(uid: String): Boolean = storiesOf(uid).any { it.id !in seen }
+
+    fun markSeen(id: Long) {
+        if (id in seen) return
+        seen = seen + id
+        prefs.edit().putString("seen", JSONArray(seen.toList().takeLast(500)).toString()).apply()
+    }
+
+    fun trayOrder(): List<String> {
+        val me = user?.id
+        val ids = stories.map { it.uid }.distinct().filter { it != me && storiesOf(it).isNotEmpty() }
+            .sortedBy { (if (hasUnseen(it)) 0 else 2) + (if (isFollowing(it)) 0 else 1) }
+        return (if (me != null && storiesOf(me).isNotEmpty()) listOf(me) else emptyList()) + ids
+    }
+
+    fun openStories(queue: List<String>, u: Int, i: Int) {
+        val q = queue.filter { storiesOf(it).isNotEmpty() }
+        if (q.isEmpty()) return
+        storyU = u.coerceIn(0, q.size - 1); storyI = i; storyQueue = q
+    }
+
+    fun closeStories() { storyQueue = null }
+
+    fun shareStory(uri: android.net.Uri, caption: String, onDone: (Boolean) -> Unit) {
+        val u = user ?: return onDone(false)
+        scope.launch {
+            val blob = com.xcluice.app.state.Posting.read(uri)
+            if (blob == null) { toast("Couldn't read that file"); onDone(false); return@launch }
+            val kind = if (blob.mime.startsWith("video/")) "video" else "image"
+            val max = if (kind == "video") 40L * 1024 * 1024 else 10L * 1024 * 1024
+            if (blob.bytes.size > max) { toast(if (kind == "video") "Video is too big (max 40 MB)" else "Photo is too big (max 10 MB)"); onDone(false); return@launch }
+            val ext = blob.ext.lowercase().replace(Regex("[^a-z0-9]"), "").take(5).ifBlank { "bin" }
+            val url = Api.upload("story_${u.id.take(8)}_${System.currentTimeMillis()}.$ext", blob.mime, blob.bytes)
+            val ok = url != null && Api.createStory(u.id, url, kind, caption.trim().ifBlank { null })
+            if (ok) { toast("Story shared"); Api.stories()?.let { stories = it } } else toast("Couldn't share story")
+            onDone(ok)
+        }
+    }
+
+    fun deleteStory(s: Story, after: () -> Unit) {
+        scope.launch {
+            if (Api.deleteStory(s.id)) { stories = stories.filter { it.id != s.id }; toast("Story deleted"); after() } else toast("Couldn't delete story")
+        }
+    }
+
+    fun saveProfile(name: String, username: String, bio: String, site: String, onResult: (String?) -> Unit) {
+        val u = user ?: return
+        scope.launch {
+            when (Api.updateProfile(u, name, username, bio, site)) {
+                0 -> {
+                    saveUser(u.copy(displayName = name, username = username))
+                    profiles = profiles.map { if (it.id == u.id) it.copy(name = name, username = username, bio = bio, website = site) else it }
+                    loadPosts(); toast("Profile updated"); onResult(null)
+                }
+                1 -> onResult("That username is taken.")
+                else -> onResult("Couldn't save. Try again.")
+            }
         }
     }
 
@@ -290,6 +408,7 @@ object App {
                 if (t % 4 == 0) { fetchMessages(); syncState() }
                 if (t % 25 == 0) user?.let { Api.presence(it) }
                 if (t % 15 == 0) fetchUsers()
+                if (t % 60 == 0) loadSocial()
             }
         }
     }

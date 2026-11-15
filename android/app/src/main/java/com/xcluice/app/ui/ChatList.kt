@@ -176,6 +176,7 @@ private fun ChatList() {
                 }
             }
 
+            if (!searchOpen) StoryTray()
             if (!App.chatUsersLoaded) {
                 val t = rememberInfiniteTransition(label = "sk")
                 val a by t.animateFloat(0.45f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "a")
