@@ -93,7 +93,7 @@ object App {
             val u = user
             if (u != null) {
                 val fresh = Api.profile(u.id)
-                if (fresh != null) { setUser(fresh) }
+                if (fresh != null) { saveUser(fresh) }
                 else if (Api.token == null) { user = null }
             }
             bootData()
@@ -104,7 +104,7 @@ object App {
         prefs.edit().putString("access", Api.token).putString("refresh", Api.refreshToken).putLong("exp", Api.expiresAt).apply()
     }
 
-    private fun setUser(u: User) {
+    private fun saveUser(u: User) {
         user = u
         prefs.edit().putString("user", JSONObject().put("id", u.id).put("username", u.username).put("email", u.email)
             .put("displayName", u.displayName).put("avatarUrl", u.avatarUrl ?: JSONObject.NULL).put("verified", u.verified).toString()).apply()
@@ -128,7 +128,7 @@ object App {
         else Api.signIn(email, pass)
         if (!res.ok || res.userId == null) return res.msg.ifBlank { "Something went wrong" }
         val prof = Api.profile(res.userId) ?: User(res.userId, clean, email, clean.replaceFirstChar { it.uppercase() }, null, false)
-        setUser(prof)
+        saveUser(prof)
         guest = false
         prefs.edit().putBoolean("guest", false).apply()
         bootData()
@@ -241,7 +241,7 @@ object App {
             val url = Api.upload("avatar_${u.username}_${System.currentTimeMillis()}.$ext", mime, bytes)
             if (url == null) { toast("Upload failed"); return@launch }
             Api.updateAvatar(u, url)
-            setUser(u.copy(avatarUrl = url))
+            saveUser(u.copy(avatarUrl = url))
             Api.presence(user ?: u)
             toast("Photo updated")
         }
