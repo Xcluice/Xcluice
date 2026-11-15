@@ -126,6 +126,7 @@ private fun MainShell() {
         StoryComposer()
         StoryViewer()
         ConfirmHost()
+        com.xcluice.app.ui.UploadBanner()
     }
 }
 

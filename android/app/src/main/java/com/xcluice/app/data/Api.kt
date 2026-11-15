@@ -8,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -247,6 +248,27 @@ object Api {
 
     suspend fun bumpTap(id: Long) {
         call { req("/rest/v1/rpc/bump_post_tap").post(jsonBody(JSONObject().put("p_id", id))) }
+    }
+
+    private class ProgressBody(private val d: okhttp3.RequestBody, private val cb: (Long) -> Unit) : okhttp3.RequestBody() {
+        override fun contentType() = d.contentType()
+        override fun contentLength() = d.contentLength()
+        override fun writeTo(sink: okio.BufferedSink) {
+            val fs = object : okio.ForwardingSink(sink) {
+                var n = 0L
+                override fun write(source: okio.Buffer, byteCount: Long) { super.write(source, byteCount); n += byteCount; cb(n) }
+            }
+            val bs = okio.buffer(fs)
+            d.writeTo(bs); bs.flush()
+        }
+    }
+
+    /** Streams a file to storage, reporting bytes sent. */
+    suspend fun uploadFile(name: String, mime: String, file: java.io.File, onBytes: (Long) -> Unit): String? {
+        val (c, _) = call {
+            req("/storage/v1/object/${Cfg.BUCKET}/$name").post(ProgressBody(file.asRequestBody(mime.toMediaType()), onBytes))
+        }
+        return if (c in 200..299) "${Cfg.SB}/storage/v1/object/public/${Cfg.BUCKET}/$name" else null
     }
 
     suspend fun upload(name: String, mime: String, bytes: ByteArray): String? {

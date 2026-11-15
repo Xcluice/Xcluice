@@ -1,5 +1,7 @@
 package com.xcluice.app.ui
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.statusBarsPadding
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -198,6 +200,36 @@ fun ConfirmHost() {
                             contentAlignment = Alignment.Center
                         ) { T(l.ok, 15.sp, FontWeight.Bold, Color.Black) }
                     }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun UploadBanner() {
+    val label = App.upLabel
+    var last by remember { mutableStateOf("") }
+    if (label != null) last = label
+    androidx.compose.animation.AnimatedVisibility(
+        label != null,
+        enter = androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(300)) { -it } + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(250)) { -it } + androidx.compose.animation.fadeOut()
+    ) {
+        val f by androidx.compose.animation.core.animateFloatAsState(App.upFrac, androidx.compose.animation.core.tween(220), label = "up")
+        Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(
+                Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).background(Color(0xFF111111))
+                    .border(1.dp, Color(0x33FFFFFF), androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 11.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    T(label ?: last, 14.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    T("${(f * 100).toInt()}%", 13.sp, FontWeight.Bold, Soft)
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color(0x33FFFFFF))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(f).clip(CircleShape).background(Color.White))
                 }
             }
         }

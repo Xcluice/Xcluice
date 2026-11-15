@@ -71,6 +71,13 @@ object App {
     var postsLoading by mutableStateOf(false)
     var postsError by mutableStateOf<String?>(null)
     var showSkeleton by mutableStateOf(false)
+    var upLabel by mutableStateOf<String?>(null)
+    var upFrac by mutableStateOf(0f)
+    private var upJob: Job? = null
+    fun upStart(l: String) { upJob?.cancel(); upLabel = l; upFrac = 0f }
+    fun upProgress(f: Float) { upFrac = f.coerceIn(0f, 1f) }
+    fun upDone(msg: String) { upFrac = 1f; toast(msg); upJob = scope.launch { delay(600); upLabel = null } }
+    fun upFail(msg: String) { toast(msg); upLabel = null }
     private fun netMsg() = if (Api.offline) "No internet connection" else "Server didn't respond. Try again"
     var postsMore by mutableStateOf(false)
     var filter by mutableIntStateOf(0)

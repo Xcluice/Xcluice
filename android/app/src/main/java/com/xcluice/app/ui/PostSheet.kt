@@ -166,8 +166,9 @@ private fun SheetBody() {
                         val ok = if (ed != null) Posting.saveEdit(ed, EditDraft(title.trim(), desc.trim(), norm, tUri, tText, keepThumb && tUri == null && tText == null, false))
                         else {
                             if (title.isBlank() && desc.isBlank() && file == null && norm == null) { busy = false; return@launch }
-                            App.toast("Publishing…")
-                            Posting.publish(Draft(title.trim(), desc.trim(), norm, file, tUri, tText))
+                            val dr = Draft(title.trim(), desc.trim(), norm, file, tUri, tText)
+                            App.scope.launch { Posting.publish(dr) }
+                            true
                         }
                         busy = false
                         if (ok) close()
