@@ -23,6 +23,7 @@ import com.xcluice.app.data.Realtime
 import com.xcluice.app.data.User
 import com.xcluice.app.data.parseMs
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import com.xcluice.app.data.isImageUrl
 import kotlinx.coroutines.Job
@@ -392,8 +393,8 @@ object App {
 
     fun loadCounts(id: String) {
         scope.launch {
-            val a = kotlinx.coroutines.async { Api.followCount("following", id) }
-            val b = kotlinx.coroutines.async { Api.followCount("follower", id) }
+            val a = async { Api.followCount("following", id) }
+            val b = async { Api.followCount("follower", id) }
             counts[id] = a.await() to b.await()
         }
     }
