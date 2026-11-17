@@ -3,8 +3,6 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-if (file('google-services.json').exists()) { apply plugin: 'com.google.gms.google-services' }
-
 def bn = (project.findProperty('buildNum') ?: '1').toString().toInteger()
 
 android {
@@ -65,7 +63,5 @@ dependencies {
     implementation 'androidx.media3:media3-effect:1.3.1'
     implementation 'androidx.media3:media3-common:1.3.1'
     implementation 'androidx.exifinterface:exifinterface:1.3.7'
-    implementation platform('com.google.firebase:firebase-bom:33.1.2')
-    implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
 }

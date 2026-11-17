@@ -84,7 +84,7 @@ object Notifier {
 
 class CheckWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result {
-        if (!App.foreground && !App.pushActive()) runCatching { App.checkNotifications() }
+        if (!App.foreground && !App.svcRunning) runCatching { App.checkNotifications() }
         return Result.success()
     }
 }

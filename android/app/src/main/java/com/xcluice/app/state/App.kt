@@ -113,11 +113,8 @@ object App {
     private var inited = false
     fun ensureInit(ctx: Context) { if (!inited) init(ctx) }
 
-    var pushToken: String? = null
-    fun pushActive(): Boolean = prefs.getString("push_token", null) != null
-    fun markPushReady(t: String?) { pushToken = t; prefs.edit().apply { if (t == null) remove("push_token") else putString("push_token", t) }.apply() }
-    fun advanceMsgMark(id: Long) { if (id > prefs.getLong("n_msg", -1L)) prefs.edit().putLong("n_msg", id).apply() }
-    fun advancePostMark(id: Long) { if (id > prefs.getLong("n_post", -1L)) prefs.edit().putLong("n_post", id).apply() }
+    @Volatile var svcRunning = false
+    fun appContext(): Context = appCtx
 
     fun init(ctx: Context) {
         inited = true
@@ -188,12 +185,8 @@ object App {
 
     fun signOut() {
         loopsOn = false; loopJob?.cancel(); rt?.stop(); rt = null
-        val pt = pushToken ?: prefs.getString("push_token", null)
-        markPushReady(null)
-        scope.launch {
-            if (pt != null) runCatching { kotlinx.coroutines.withTimeoutOrNull(3000) { Api.unregisterDevice(pt) } }
-            Api.clearSession(); saveSession()
-        }
+        com.xcluice.app.data.Push.unregister()
+        scope.launch { Api.clearSession(); saveSession() }
         user = null; guest = false; thread = null; tab = 0
         messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false
         follows = emptyList(); stories = emptyList(); storyQueue = null; profile = null

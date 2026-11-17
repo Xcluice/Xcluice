@@ -65,6 +65,18 @@ class MainActivity : ComponentActivity() {
     override fun onStart() { super.onStart(); App.foreground = true; App.onOpen() }
     override fun onStop() { super.onStop(); App.foreground = false }
 
+    @android.annotation.SuppressLint("BatteryLife")
+    private fun askBatteryExemption() {
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        val sp = getSharedPreferences("xcluice", MODE_PRIVATE)
+        if (pm.isIgnoringBatteryOptimizations(packageName) || sp.getBoolean("batt_asked", false)) return
+        sp.edit().putBoolean("batt_asked", true).apply()
+        runCatching {
+            startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(android.net.Uri.parse("package:$packageName")))
+        }
+    }
+
     override fun onNewIntent(i: android.content.Intent) { super.onNewIntent(i); if (i.hasExtra("tab")) App.tab = i.getIntExtra("tab", 0) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +89,8 @@ class MainActivity : ComponentActivity() {
         if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 11)
         App.tab = intent?.getIntExtra("tab", App.tab) ?: App.tab
+        if (App.user != null) com.xcluice.app.data.Push.start(applicationContext)
+        askBatteryExemption()
         setContent { Root() }
     }
 }

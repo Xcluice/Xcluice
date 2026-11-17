@@ -1,49 +1,76 @@
 package com.xcluice.app.data
 
-import com.google.firebase.messaging.FirebaseMessaging
-import com.google.firebase.messaging.FirebaseMessagingService
-import com.google.firebase.messaging.RemoteMessage
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.xcluice.app.R
 import com.xcluice.app.state.App
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
+/** Firebase-free push: a lightweight foreground service that checks Supabase while the app is in the background. */
 object Push {
-    /** Fetch the FCM token and register it for the signed-in user. Silently does nothing if Firebase isn't configured. */
-    fun register() {
-        val u = App.user ?: return
-        App.scope.launch {
-            runCatching {
-                val t = FirebaseMessaging.getInstance().token.await()
-                if (Api.registerDevice(u.id, t)) App.markPushReady(t)
-            }
-        }
-    }
+    fun register() = start(App.appContext())
+    fun unregister() { val c = App.appContext(); c.stopService(Intent(c, NotifyService::class.java)) }
 
-    fun unregister() {
-        val t = App.pushToken ?: return
-        App.scope.launch { runCatching { Api.unregisterDevice(t) }; App.markPushReady(null) }
+    fun start(ctx: Context) {
+        runCatching { ContextCompat.startForegroundService(ctx, Intent(ctx, NotifyService::class.java)) }
     }
 }
 
-class XPushService : FirebaseMessagingService() {
-    override fun onNewToken(token: String) {
+class NotifyService : Service() {
+    private var job: Job? = null
+
+    override fun onBind(i: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
         App.ensureInit(applicationContext)
-        App.scope.launch { App.user?.let { if (Api.registerDevice(it.id, token)) App.markPushReady(token) } }
+        if (Build.VERSION.SDK_INT >= 26) {
+            getSystemService(NotificationManager::class.java).createNotificationChannel(
+                NotificationChannel(CH, "Background connection", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) }
+            )
+        }
+        val n: Notification = NotificationCompat.Builder(this, CH)
+            .setSmallIcon(R.drawable.ic_notif).setContentTitle("Xcluice")
+            .setContentText("Listening for new messages").setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN).build()
+        if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(1, n)
     }
 
-    override fun onMessageReceived(m: RemoteMessage) {
-        App.ensureInit(applicationContext)
-        val d = m.data
-        val id = d["id"]?.toLongOrNull()
-        when (d["type"]) {
-            "message" -> {
-                if (!App.foreground) Notifier.messages(applicationContext, listOf((d["title"] ?: "New message") to (d["body"] ?: "")))
-                id?.let { App.advanceMsgMark(it) }
-            }
-            "post" -> {
-                if (!App.foreground) Notifier.postText(applicationContext, d["title"] ?: "New post", d["body"] ?: "")
-                id?.let { App.advancePostMark(it) }
+    override fun onStartCommand(i: Intent?, flags: Int, startId: Int): Int {
+        if (job?.isActive != true) {
+            App.svcRunning = true
+            job = App.scope.launch {
+                while (isActive) {
+                    if (App.user == null) { stopSelf(); break }
+                    if (!App.foreground) runCatching { App.checkNotifications() }
+                    delay(15_000)
+                }
             }
         }
+        return START_STICKY
+    }
+
+    override fun onDestroy() { job?.cancel(); App.svcRunning = false; super.onDestroy() }
+
+    companion object { private const val CH = "xc-service" }
+}
+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, i: Intent) {
+        val signedIn = ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE).getString("user", null) != null
+        if (signedIn) Push.start(ctx)
     }
 }
