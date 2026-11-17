@@ -336,8 +336,13 @@ object Api {
         return runCatching { parseMsgs(JSONArray(b)).firstOrNull() }.getOrNull()
     }
 
-    suspend fun deleteMessage(id: Long): Boolean =
-        call { req("/rest/v1/chat_messages?id=eq.$id").delete() }.first in 200..299
+    /** Deletes the row for everyone, then verifies it is really gone (a blocked delete still returns 2xx). */
+    suspend fun deleteMessage(id: Long): Boolean {
+        val (c, _) = call { req("/rest/v1/chat_messages?id=eq.$id").delete() }
+        if (c !in 200..299) return false
+        val left = getArr("/rest/v1/chat_messages?select=id&id=eq.$id") ?: return false
+        return left.length() == 0
+    }
 
     suspend fun reactions(): List<Reaction>? {
         val a = getArr("/rest/v1/chat_reactions?select=message_id,uid,emoji&limit=2000") ?: return null

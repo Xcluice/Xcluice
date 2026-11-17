@@ -662,7 +662,7 @@ private fun MsgSheet() {
                     Box(Modifier.fillMaxWidth().height(1.dp).background(Hair))
                     SheetAction(G.REPLY, "Reply") { App.sheetMsg = null; App.reply = s }
                     if (!s.isAudio) SheetAction(G.COPY, "Copy") { clip.setText(AnnotatedString(s.text)); App.sheetMsg = null; App.toast("Copied") }
-                    if (mine) SheetAction(G.TRASH, "Delete") { App.sheetMsg = null; App.deleteMessage(s) }
+                    if (mine) SheetAction(G.TRASH, "Delete for everyone") { App.sheetMsg = null; App.ask("Delete this message for everyone? It disappears from every chat and can't be undone.", "Delete", true) { App.deleteMessage(s) } }
                 }
             }
         }

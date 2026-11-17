@@ -631,7 +631,7 @@ object App {
         messages = messages.filter { it.id != m.id }
         reactions = reactions.filter { it.messageId != m.id }
         scope.launch {
-            if (!Api.deleteMessage(m.id)) { messages = old; toast("Couldn't delete message") }
+            if (!Api.deleteMessage(m.id)) { messages = old; toast("Couldn't delete for everyone (not allowed)") }
         }
     }
 }
