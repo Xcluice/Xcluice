@@ -244,13 +244,14 @@
       '<p id="thumbName" class="text-[11px] text-violet-400/40 truncate">Add a cover image for this file</p></div>' +
       '<button type="button" id="thumbBtn" class="text-xs font-semibold text-violet-300 rounded-lg px-2.5 py-1.5 hover:bg-violet-900/30" style="border:1px solid rgba(139,92,246,0.25)">Choose</button>' +
       '<input type="file" id="thumbInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">' +
+      '<input type="url" id="thumbUrlInput" inputmode="url" autocomplete="off" placeholder="Enter thumbnail URL (optional, https://...)" class="x-input basis-full w-full px-3.5 py-2 rounded-xl text-xs">' +
       '<div id="thumbTextBox" class="hidden basis-full"><canvas id="thumbCanvas" class="w-full rounded-xl" style="aspect-ratio:16/9;background:#171717"></canvas>' +
       '<textarea id="thumbText" rows="2" maxlength="90" autocomplete="off" autocorrect="off" data-lpignore="true" placeholder="Type your thumbnail text…" class="x-input w-full mt-2 px-3.5 py-2.5 rounded-xl text-sm" style="resize:none"></textarea></div>';
     input.insertAdjacentElement('afterend', row2);
     row2.querySelectorAll('#thumbTabs button').forEach((b) => b.addEventListener('click', () => setThumbMode(b.dataset.mode)));
     document.getElementById('thumbText').addEventListener('input', () => { clearTimeout(textTimer); textTimer = setTimeout(renderTextThumb, 150); });
     document.getElementById('thumbBtn').addEventListener('click', () => {
-      if (selectedThumb || existingThumb) { existingThumb = null; setThumb(null); } else document.getElementById('thumbInput').click();
+      if (selectedThumb || existingThumb) { existingThumb = null; const uInp = document.getElementById('thumbUrlInput'); if (uInp) uInp.value = ''; setThumb(null); } else document.getElementById('thumbInput').click();
     });
     document.getElementById('thumbInput').addEventListener('change', (e) => {
       const f = e.target.files[0];
@@ -259,7 +260,18 @@
       if (!/^image\/(png|jpe?g|webp|gif)$/.test(f.type)) { toast('Thumbnail must be an image', 'err'); return; }
       if (f.size > 5 * 1024 * 1024) { toast('Thumbnail max size is 5MB', 'err'); return; }
       existingThumb = null;
+      const uInp = document.getElementById('thumbUrlInput'); if (uInp) uInp.value = '';
       setThumb(f);
+    });
+    document.getElementById('thumbUrlInput').addEventListener('input', (e) => {
+      const u = normalizeLink(e.target.value);
+      const prev = document.getElementById('thumbPreview'), name = document.getElementById('thumbName'), btn = document.getElementById('thumbBtn');
+      if (u) {
+        selectedThumb = null; existingThumb = u;
+        if (prev) { prev.innerHTML = ''; const im = document.createElement('img'); im.src = u; im.className = 'w-full h-full object-cover'; prev.appendChild(im); }
+        if (name) name.textContent = host(u) + ' (URL)';
+        if (btn) btn.textContent = 'Remove';
+      } else if (!selectedThumb) { existingThumb = null; setThumb(null); }
     });
     refreshIcons();
   }
@@ -341,7 +353,7 @@
     const text = mode === 'text';
     if (text && thumbMode !== 'text') imageThumbSaved = (selectedThumb && selectedThumb !== textThumbFile) ? selectedThumb : null;
     thumbMode = mode;
-    ['thumbPreview', 'thumbInfo', 'thumbBtn'].forEach((id) => document.getElementById(id)?.classList.toggle('hidden', text));
+    ['thumbPreview', 'thumbInfo', 'thumbBtn', 'thumbUrlInput'].forEach((id) => document.getElementById(id)?.classList.toggle('hidden', text));
     document.getElementById('thumbTextBox')?.classList.toggle('hidden', !text);
     document.querySelectorAll('#thumbTabs .cat-pill').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
     if (text) { selectedThumb = textThumbFile; renderTextThumb(); }
@@ -362,6 +374,7 @@
   function resetThumbText() {
     textRenderId++; textThumbFile = null; imageThumbSaved = null;
     const ta = document.getElementById('thumbText'); if (ta) ta.value = '';
+    const uInp = document.getElementById('thumbUrlInput'); if (uInp) uInp.value = '';
     setThumbMode('image');
     selectedThumb = null;
   }
@@ -440,6 +453,9 @@
     const link = rawLink ? normalizeLink(rawLink) : null;
     if (rawLink && !link) { toast('That link doesn’t look right', 'err'); return; }
     if (!title && !desc && !selectedFile && !link) return;
+    const rawThumbUrl = (thumbMode !== 'text' ? (document.getElementById('thumbUrlInput')?.value || '') : '').trim();
+    const customThumbUrl = rawThumbUrl ? normalizeLink(rawThumbUrl) : null;
+    if (rawThumbUrl && !customThumbUrl) { toast('That thumbnail URL doesn\'t look right', 'err'); return; }
     const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Publishing…';
     try {
       await flushTextThumb();
@@ -448,12 +464,17 @@
         el('dzProgress').classList.remove('hidden');
         fileUrl = await uploadToBucket(selectedFile, '');
         if (selectedThumb) thumbUrl = await uploadToBucket(selectedThumb, 'thumb_');
+        else if (customThumbUrl) thumbUrl = customThumbUrl;
       }
       if (link && !selectedFile) {
         // The thumbnail (yours, or an auto text card from the headline) is the card picture; tapping the card opens the link
         let tf = selectedThumb;
-        if (!tf) tf = await makeTextThumbFile(title || desc || host(link));
         if (tf) thumbUrl = await uploadToBucket(tf, 'thumb_');
+        else if (customThumbUrl) thumbUrl = customThumbUrl;
+        else {
+          tf = await makeTextThumbFile(title || desc || host(link));
+          if (tf) thumbUrl = await uploadToBucket(tf, 'thumb_');
+        }
         fileUrl = link; linkOut = null;
       }
       const fallbackTitle = link ? host(link) : '';
@@ -517,6 +538,7 @@
         prev.appendChild(im);
         document.getElementById('thumbName').textContent = 'Current thumbnail';
         document.getElementById('thumbBtn').textContent = 'Remove';
+        if (isLinkUrl(p.thumb_url)) document.getElementById('thumbUrlInput').value = p.thumb_url;
       }
     }
     document.querySelector('#uploadOverlay h2').textContent = 'Edit Post';
@@ -532,6 +554,9 @@
     const link = rawLink ? normalizeLink(rawLink) : null;
     if (rawLink && !link) { toast('That link doesn’t look right', 'err'); return; }
     if (!title && !desc && !p.file_url && !link) { toast('Add a title or description', 'err'); return; }
+    const rawThumbUrl = (thumbMode !== 'text' ? (document.getElementById('thumbUrlInput')?.value || '') : '').trim();
+    const customThumbUrl = rawThumbUrl ? normalizeLink(rawThumbUrl) : null;
+    if (rawThumbUrl && !customThumbUrl) { toast('That thumbnail URL doesn\'t look right', 'err'); return; }
     const btn = el('publishBtn'); btn.disabled = true; btn.textContent = 'Saving…';
     try {
       await flushTextThumb();
@@ -546,6 +571,7 @@
       let thumbFinal = null;
       if (canThumb) {
         if (selectedThumb) thumbFinal = await uploadToBucket(selectedThumb, 'thumb_');
+        else if (customThumbUrl) thumbFinal = customThumbUrl;
         else if (existingThumb && !(linkChanged && /\/link_\d+_/.test(existingThumb))) thumbFinal = existingThumb;
       }
 
