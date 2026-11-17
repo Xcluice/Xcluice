@@ -219,10 +219,11 @@ object App {
 
     private fun prefetchImages() {
         val loader = coil.Coil.imageLoader(appCtx)
-        val urls = posts.take(8).flatMap { listOf(it.thumbUrl, it.authorPhoto, it.fileUrl.takeIf { u -> isImageUrl(u) }) } +
-            stories.take(6).map { it.mediaUrl.takeIf { _ -> it.kind == "image" } }
-        urls.filterNotNull().filter { it.isNotBlank() }.distinct().take(20).forEach {
-            loader.enqueue(coil.request.ImageRequest.Builder(appCtx).data(it).build())
+        posts.take(12).mapNotNull { it.thumbUrl ?: it.fileUrl.takeIf { u -> isImageUrl(u) } }.filter { it.isNotBlank() }.distinct().forEach {
+            loader.enqueue(coil.request.ImageRequest.Builder(appCtx).data(it).size(400).build())
+        }
+        posts.take(24).mapNotNull { it.authorPhoto }.filter { it.isNotBlank() }.distinct().forEach {
+            loader.enqueue(coil.request.ImageRequest.Builder(appCtx).data(it).size(160).build())
         }
     }
 
@@ -390,7 +391,11 @@ object App {
     }
 
     fun loadCounts(id: String) {
-        scope.launch { counts[id] = Api.followCount("following", id) to Api.followCount("follower", id) }
+        scope.launch {
+            val a = kotlinx.coroutines.async { Api.followCount("following", id) }
+            val b = kotlinx.coroutines.async { Api.followCount("follower", id) }
+            counts[id] = a.await() to b.await()
+        }
     }
 
     fun isFollowing(id: String): Boolean { val u = user ?: return false; return follows.any { it.first == u.id && it.second == id } }
@@ -469,6 +474,17 @@ object App {
                 1 -> onResult("That username is taken.")
                 else -> onResult("Couldn't save. Try again.")
             }
+        }
+    }
+
+    fun changeAvatarFromUri(uri: android.net.Uri) {
+        scope.launch {
+            val blob = withContext(Dispatchers.IO) { Posting.compressImage(uri, 400, 85) }
+            if (blob != null) { changeAvatar(blob.bytes, blob.mime, blob.ext); return@launch }
+            val bytes = withContext(Dispatchers.IO) { runCatching { appCtx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull() } ?: run { toast("Couldn't read photo"); return@launch }
+            val mime = appCtx.contentResolver.getType(uri) ?: "image/jpeg"
+            val ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "jpg"
+            changeAvatar(bytes, mime, ext)
         }
     }
 

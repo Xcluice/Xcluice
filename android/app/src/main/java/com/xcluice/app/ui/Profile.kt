@@ -110,12 +110,7 @@ private fun ProfileBody(who: Who, own: Boolean, onClose: (() -> Unit)?) {
     LaunchedEffect(email, App.posts) { posts = Api.postsByAuthor(email) ?: posts ?: emptyList() }
     LaunchedEffect(id) { if (id.isNotBlank()) App.loadCounts(id) }
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            val bytes = runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-            val mime = ctx.contentResolver.getType(uri) ?: "image/jpeg"
-            val ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "jpg"
-            if (bytes != null) App.changeAvatar(bytes, mime, ext)
-        }
+        if (uri != null) App.changeAvatarFromUri(uri)
     }
     val addStory = rememberStoryPicker()
     val photo = if (own) (App.user?.avatarUrl ?: pr.photo ?: who.photo) else (pr.photo ?: who.photo)

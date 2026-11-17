@@ -13,7 +13,8 @@ class XApp : Application(), ImageLoaderFactory {
 
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
-            .components { add(SvgDecoder.Factory()) }
+            .components { add(SvgDecoder.Factory()); add(com.xcluice.app.data.SbResizeInterceptor()) }
+            .respectCacheHeaders(false)
             .crossfade(true)
             .build()
 }
