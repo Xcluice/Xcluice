@@ -268,7 +268,7 @@ fun StoryComposer() {
         var caption by remember(uri) { mutableStateOf("") }
         var busy by remember(uri) { mutableStateOf(false) }
         val isVideo = remember(uri) { Posting.mimeOf(uri).startsWith("video/") }
-        Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding().imePadding().padding(16.dp)) {
+        Column(Modifier.fillMaxSize().background(Color.Black).blockTouches().statusBarsPadding().navigationBarsPadding().imePadding().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 T("New story", 19.sp, FontWeight.Bold, modifier = Modifier.weight(1f))
                 Box(Modifier.size(36.dp).pressable(true, 0.86f) { App.storyDraft = null }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.CLOSE, 17.dp, Color.White) }

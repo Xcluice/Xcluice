@@ -28,12 +28,12 @@ class Blob(val bytes: ByteArray, val mime: String, val ext: String, val name: St
 
 class Draft(
     val title: String, val desc: String, val link: String?, val file: Uri?,
-    val thumbUri: Uri?, val thumbText: String?
+    val thumbUri: Uri?, val thumbText: String?, val thumbLink: String? = null
 )
 
 class EditDraft(
     val title: String, val desc: String, val link: String?, val newThumb: Uri?,
-    val thumbText: String?, val keepThumb: Boolean, val rawLinkBad: Boolean
+    val thumbText: String?, val keepThumb: Boolean, val rawLinkBad: Boolean, val thumbLink: String? = null
 )
 
 object Posting {
@@ -77,7 +77,7 @@ object Posting {
 
     /** Bold condensed caps on a dark card, same look as the website's text thumbnail. */
     fun textThumb(text: String): Blob {
-        val w = 1280; val h = 720
+        val w = 960; val h = 540
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         c.drawColor(0xFF171717.toInt())
@@ -85,13 +85,13 @@ object Posting {
         val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFF5F5F5.toInt(); typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD); textAlign = Paint.Align.CENTER
         }
-        var size = 280f
+        var size = 210f
         var lines: List<String> = emptyList()
-        while (size >= 48f) {
+        while (size >= 36f) {
             p.textSize = size
             lines = wrap(p, t, w * 0.86f)
             if (lines.size * size <= h * 0.72f && lines.all { p.measureText(it) <= w * 0.86f }) break
-            size -= 4f
+            size -= 3f
         }
         p.textSize = size
         val y0 = h / 2f - lines.size * size / 2f + size * 0.82f
@@ -107,7 +107,7 @@ object Posting {
     }
 
     private suspend fun thumbBlob(uri: Uri?, text: String?): Blob? {
-        if (uri != null) return compressImage(uri, 1280, 82) ?: read(uri)
+        if (uri != null) return compressImage(uri, 960, 75) ?: read(uri)
         if (!text.isNullOrBlank()) return textThumb(text)
         return null
     }
@@ -239,10 +239,12 @@ object Posting {
             if (d.file != null) {
                 fileP = prepare(d.file) { App.upProgress(it * 0.25f) } ?: run { App.upFail("Couldn't read that file"); return false }
                 files.add(fileP.file); fileName = fileP.name
-                thumbBlob(d.thumbUri, d.thumbText)?.let { thumbP = blobToFile(it).also { t -> files.add(t.file) } }
+                if (d.thumbLink == null) thumbBlob(d.thumbUri, d.thumbText)?.let { thumbP = blobToFile(it).also { t -> files.add(t.file) } }
             } else if (d.link != null) {
-                val tb = thumbBlob(d.thumbUri, d.thumbText) ?: textThumb(d.title.ifBlank { d.desc.ifBlank { hostOf(d.link) } })
-                thumbP = blobToFile(tb).also { files.add(it.file) }
+                if (d.thumbLink == null) {
+                    val tb = thumbBlob(d.thumbUri, d.thumbText) ?: textThumb(d.title.ifBlank { d.desc.ifBlank { hostOf(d.link) } })
+                    thumbP = blobToFile(tb).also { files.add(it.file) }
+                }
             }
             val total = ((fileP?.file?.length() ?: 0L) + (thumbP?.file?.length() ?: 0L)).coerceAtLeast(1L)
             var fSent = 0L; var tSent = 0L
@@ -256,7 +258,7 @@ object Posting {
                 fj.await() to tj.await()
             }
             if (fileP != null && fu == null) { App.upFail("Upload failed. Check your connection"); return false }
-            fileUrl = fu; thumbUrl = tu
+            fileUrl = fu; thumbUrl = d.thumbLink ?: tu
             if (d.file == null && d.link != null) { fileUrl = d.link; linkOut = null }
             App.upProgress(0.97f)
             val fallback = if (d.link != null) hostOf(d.link) else ""
@@ -287,8 +289,9 @@ object Posting {
             .put("subject", e.desc.ifBlank { e.title.ifBlank { if (fileLike) "" else p.subject } })
         var thumbFinal: String? = null
         if (canThumb) {
-            val nb = thumbBlob(e.newThumb, e.thumbText)
-            if (nb != null) thumbFinal = upload(nb, "thumb_") ?: run { App.toast("Upload failed"); return false }
+            val nb = if (e.thumbLink != null) null else thumbBlob(e.newThumb, e.thumbText)
+            if (e.thumbLink != null) thumbFinal = e.thumbLink
+            else if (nb != null) thumbFinal = upload(nb, "thumb_") ?: run { App.toast("Upload failed"); return false }
             else {
                 val ex = p.thumbUrl
                 if (e.keepThumb && ex != null && !(linkChanged && Regex("/link_\\d+_").containsMatchIn(ex))) thumbFinal = ex

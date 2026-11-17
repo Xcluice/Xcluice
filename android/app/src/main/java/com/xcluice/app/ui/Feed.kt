@@ -89,7 +89,11 @@ fun PostThumb(p: Post, modifier: Modifier = Modifier, small: Boolean = false) {
     Box(modifier.background(Panel)) {
         val img = p.thumbUrl?.takeIf { it.isNotBlank() } ?: p.fileUrl.takeIf { isImageUrl(it) }
         when {
-            img != null -> AsyncImage(img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            img != null -> {
+                val ctx = LocalContext.current
+                val req = remember(img) { coil.request.ImageRequest.Builder(ctx).data(img).memoryCacheKey(img).diskCacheKey(img).crossfade(120).build() }
+                AsyncImage(req, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            }
             p.fileUrl.isBlank() -> Box(Modifier.fillMaxSize().padding(if (small) 8.dp else 20.dp), contentAlignment = Alignment.Center) {
                 T(p.headline, if (small) 11.sp else 15.sp, FontWeight.Medium, Soft, maxLines = if (small) 4 else 4, align = TextAlign.Center, lineHeight = if (small) 14.sp else 21.sp)
             }
@@ -212,8 +216,6 @@ private fun PostCard(p: Post, index: Int) {
                 App.toggleLike(p)
                 if (App.user != null) scope.launch { heart.snapTo(0.4f); heart.animateTo(1f, spring(0.3f, Spring.StiffnessMedium)) }
             }, on = liked, modifier = Modifier.graphicsLayer { scaleX = heart.value; scaleY = heart.value })
-            Pill(num(p.taps), G.EYE, null)
-            p.link?.let { l -> Pill("Open link", G.LINK, { openUrl(ctx, l) }) }
             if (p.hasRealFile) Pill("Download", G.DOWNLOAD, { openUrl(ctx, p.fileUrl) })
             if (App.canEdit(p)) Pill("Edit", G.EDIT, { App.editing = p })
             if (App.isAdmin()) Pill(if (p.pinned) "Unpin" else "Pin", G.PIN, { App.togglePin(p) })

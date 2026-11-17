@@ -171,7 +171,7 @@ fun ChatThread(person: ChatUser) {
         out
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().background(Color.Black).blockTouches()) {
         Column(Modifier.fillMaxSize()) {
             ThreadHeader(person)
             ThreadMessages(items, rx, msgs, Modifier.weight(1f))

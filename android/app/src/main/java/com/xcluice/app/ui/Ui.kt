@@ -273,8 +273,15 @@ fun Tick(dp: Dp = 14.dp) {
 
 @Composable
 fun Avatar(url: String?, key: String?, dp: Dp, modifier: Modifier = Modifier) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { dp.roundToPx() }
+    val src = if (url.isNullOrBlank()) defAvatar(key) else url
+    val model = remember(src, px) {
+        coil.request.ImageRequest.Builder(ctx).data(src).size(px).memoryCacheKey("$src@$px").diskCacheKey(src)
+            .crossfade(false).build()
+    }
     AsyncImage(
-        model = if (url.isNullOrBlank()) defAvatar(key) else url,
+        model = model,
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier.size(dp).clip(CircleShape).background(Color(0xFF111111))

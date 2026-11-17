@@ -81,7 +81,7 @@ fun PostViewer() {
     ) {
         val v = last ?: return@AnimatedVisibility
         val ctx = LocalContext.current
-        Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+        Column(Modifier.fillMaxSize().background(Color.Black).blockTouches().statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(36.dp).pressable(true, 0.86f) { App.viewing = null }.clip(CircleShape).background(Glass), contentAlignment = Alignment.Center) { Glyph(G.CLOSE, 18.dp, Color.White) }
                 Avatar(v.authorPhoto, v.authorEmail.ifBlank { v.authorName }, 34.dp, Modifier.pressable(true, 0.88f) { App.viewing = null; App.openProfile(Who(v.authorName, v.authorEmail, v.authorPhoto, null)) })

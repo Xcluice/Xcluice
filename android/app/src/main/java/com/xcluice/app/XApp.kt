@@ -14,7 +14,10 @@ class XApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .components { add(SvgDecoder.Factory()); add(com.xcluice.app.data.SbResizeInterceptor()) }
+            .memoryCache { coil.memory.MemoryCache.Builder(this).maxSizePercent(0.25).build() }
+            .diskCache { coil.disk.DiskCache.Builder().directory(cacheDir.resolve("img")).maxSizeBytes(150L * 1024 * 1024).build() }
+            .allowRgb565(true)
             .respectCacheHeaders(false)
-            .crossfade(true)
+            .crossfade(120)
             .build()
 }

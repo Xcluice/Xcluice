@@ -235,3 +235,7 @@ fun UploadBanner() {
         }
     }
 }
+
+
+/** Full-screen overlays must swallow touches so they never reach the screen underneath. */
+fun Modifier.blockTouches(): Modifier = this.pointerInput(Unit) { detectTapGestures { } }

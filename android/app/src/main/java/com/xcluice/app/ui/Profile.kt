@@ -125,7 +125,7 @@ private fun ProfileBody(who: Who, own: Boolean, onClose: (() -> Unit)?) {
     val hasStory = id.isNotBlank() && App.storiesOf(id).isNotEmpty()
     val joined = remember(pr.joined) { pr.joined?.let { runCatching { java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(com.xcluice.app.data.parseMs(it))) }.getOrNull() } }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().background(Color.Black).blockTouches()) {
         DotField(Modifier.fillMaxSize(), strength = 0.55f)
         LazyVerticalGrid(
             GridCells.Fixed(3), Modifier.fillMaxSize(),

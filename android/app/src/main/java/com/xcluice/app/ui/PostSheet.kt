@@ -87,6 +87,7 @@ private fun SheetBody() {
     var thumbMode by remember { mutableStateOf("image") }
     var thumbUri by remember { mutableStateOf<Uri?>(null) }
     var thumbText by remember { mutableStateOf("") }
+    var thumbLinkIn by remember { mutableStateOf("") }
     var keepThumb by remember { mutableStateOf(ed?.thumbUrl != null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -130,6 +131,7 @@ private fun SheetBody() {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Pill("Image", G.IMAGE, { thumbMode = "image" }, on = thumbMode == "image")
                             Pill("Text", G.EDIT, { thumbMode = "text" }, on = thumbMode == "text")
+                            Pill("URL", G.LINK, { thumbMode = "url" }, on = thumbMode == "url")
                         }
                         if (thumbMode == "image") {
                             val shown: Any? = thumbUri ?: (if (keepThumb) ed?.thumbUrl else null)
@@ -142,6 +144,13 @@ private fun SheetBody() {
                                     Pill("Change", null, { pickThumb.launch("image/*") })
                                     Pill("Remove", G.CLOSE, { thumbUri = null; keepThumb = false })
                                 } else Pill("Choose cover image", G.IMAGE, { pickThumb.launch("image/*") })
+                            }
+                        } else if (thumbMode == "url") {
+                            InputBox(thumbLinkIn, { thumbLinkIn = it }, "Image URL  (https://…/cover.jpg)", keyboard = KeyboardType.Uri)
+                            val pv = normalizeLink(thumbLinkIn.trim())
+                            Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(12.dp)).background(Panel), contentAlignment = Alignment.Center) {
+                                if (pv != null) AsyncImage(pv, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                else Glyph(G.IMAGE, 24.dp, Muted)
                             }
                         } else {
                             InputBox(thumbText, { thumbText = it }, "Text for the thumbnail card", maxLen = 90, minHeight = 48.dp)
@@ -161,12 +170,14 @@ private fun SheetBody() {
                     if (raw.isNotEmpty() && norm == null) { App.toast("That link doesn't look right"); return@BtnWhite }
                     val tText = if (thumbMode == "text" && canThumb) thumbText.trim().ifBlank { null } else null
                     val tUri = if (thumbMode == "image" && canThumb) thumbUri else null
+                    val tLink = if (thumbMode == "url" && canThumb && thumbLinkIn.isNotBlank()) normalizeLink(thumbLinkIn.trim()) else null
+                    if (thumbMode == "url" && canThumb && thumbLinkIn.isNotBlank() && tLink == null) { App.toast("That thumbnail URL doesn't look right"); return@BtnWhite }
                     scope.launch {
                         busy = true
-                        val ok = if (ed != null) Posting.saveEdit(ed, EditDraft(title.trim(), desc.trim(), norm, tUri, tText, keepThumb && tUri == null && tText == null, false))
+                        val ok = if (ed != null) Posting.saveEdit(ed, EditDraft(title.trim(), desc.trim(), norm, tUri, tText, keepThumb && tUri == null && tText == null && tLink == null, false, tLink))
                         else {
                             if (title.isBlank() && desc.isBlank() && file == null && norm == null) { busy = false; return@launch }
-                            val dr = Draft(title.trim(), desc.trim(), norm, file, tUri, tText)
+                            val dr = Draft(title.trim(), desc.trim(), norm, file, tUri, tText, tLink)
                             App.scope.launch { Posting.publish(dr) }
                             true
                         }
