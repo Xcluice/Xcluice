@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
     private fun askBatteryExemption() {
         val pm = getSystemService(android.os.PowerManager::class.java)
         val sp = getSharedPreferences("xcluice", MODE_PRIVATE)
-        if (pm.isIgnoringBatteryOptimizations(packageName) || sp.getBoolean("batt_asked", false)) return
+        if (App.fcmConfirmed() || pm.isIgnoringBatteryOptimizations(packageName) || sp.getBoolean("batt_asked", false)) return
         sp.edit().putBoolean("batt_asked", true).apply()
         runCatching {
             startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
