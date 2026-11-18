@@ -25,6 +25,7 @@ object Push {
     fun unregister() { val c = App.appContext(); c.stopService(Intent(c, NotifyService::class.java)) }
 
     fun start(ctx: Context) {
+        if (App.fcmConfirmed()) return
         runCatching { ContextCompat.startForegroundService(ctx, Intent(ctx, NotifyService::class.java)) }
     }
 }
@@ -54,7 +55,7 @@ class NotifyService : Service() {
             App.svcRunning = true
             job = App.scope.launch {
                 while (isActive) {
-                    if (App.user == null) { stopSelf(); break }
+                    if (App.user == null || App.fcmConfirmed()) { stopSelf(); break }
                     if (!App.foreground) runCatching { App.checkNotifications() }
                     delay(15_000)
                 }

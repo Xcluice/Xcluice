@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "689430325612",
+    "project_id": "studio-256508473-71469",
+    "storage_bucket": "studio-256508473-71469.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:689430325612:android:cab212fb1de17c28766b49",
+        "android_client_info": {
+          "package_name": "com.xcluice.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLWti1qvEqWuq0rAJ7I5B0p3UKjR8mFUI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

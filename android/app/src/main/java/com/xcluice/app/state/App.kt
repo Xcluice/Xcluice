@@ -115,6 +115,13 @@ object App {
     fun ensureInit(ctx: Context) { if (!inited) init(ctx) }
 
     @Volatile var svcRunning = false
+    @Volatile var pushToken: String? = null
+    fun markPushReady(t: String?) { pushToken = t; prefs.edit().apply { if (t == null) remove("push_token") else putString("push_token", t) }.apply() }
+    /** True once a real Firebase push has been received on this device; only then is the polling service retired. */
+    fun fcmConfirmed(): Boolean = prefs.getBoolean("fcm_seen", false)
+    fun markFcmSeen() { prefs.edit().putBoolean("fcm_seen", true).apply() }
+    fun advanceMsgMark(id: Long): Boolean { val cur = prefs.getLong("n_msg", -1L); if (id > cur) { prefs.edit().putLong("n_msg", id).apply(); return true }; return false }
+    fun advancePostMark(id: Long): Boolean { val cur = prefs.getLong("n_post", -1L); if (id > cur) { prefs.edit().putLong("n_post", id).apply(); return true }; return false }
     fun appContext(): Context = appCtx
 
     fun init(ctx: Context) {
@@ -187,6 +194,7 @@ object App {
     fun signOut() {
         loopsOn = false; loopJob?.cancel(); rt?.stop(); rt = null
         com.xcluice.app.data.Push.unregister()
+        com.xcluice.app.data.Fcm.unregister()
         scope.launch { Api.clearSession(); saveSession() }
         user = null; guest = false; thread = null; tab = 0
         messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false
@@ -212,6 +220,7 @@ object App {
             jobs += scope.launch { fetchUsers() }
             startChat()
             com.xcluice.app.data.Push.register()
+            com.xcluice.app.data.Fcm.register()
         }
         jobs.forEach { it.join() }
         prefetchImages()
