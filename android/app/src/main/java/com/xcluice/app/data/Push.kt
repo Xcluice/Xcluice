@@ -72,6 +72,9 @@ class NotifyService : Service() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) {
         val signedIn = ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE).getString("user", null) != null
-        if (signedIn) Push.start(ctx)
+        if (signedIn) {
+            App.ensureInit(ctx.applicationContext)
+            Notifier.setup(ctx.applicationContext)
+            Push.start(ctx.applicationContext)
     }
 }
