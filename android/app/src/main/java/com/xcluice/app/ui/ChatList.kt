@@ -131,7 +131,7 @@ private fun ChatList() {
             }
             val lastTs = last?.createdMs ?: 0L
             val fromThem = last != null && last.uid == u.uid
-            val unread = fromThem && lastTs > (reads[u.uid] ?: 0L)
+            val unread = fromThem && lastTs > (reads[u.uid] ?: 0L) && u.uid !in App.blocked
             val act = parseMs(u.lastActive)
             ChatRow(u, last, lastTs, fromThem, unread, u.lastActive != null && now - act < 60_000, act)
         }.filter { q.isBlank() || it.u.name.lowercase().contains(q.trim().lowercase()) }
@@ -257,13 +257,13 @@ private fun ChatRowView(r: ChatRow, index: Int) {
                     if (r.activeNow) { Dot(7.dp, Green); T("Active now", 13.5f.sp, color = Muted, maxLines = 1) }
                     else T("Tap to chat", 13.5f.sp, color = Muted, maxLines = 1)
                 } else {
-                    val label = if (r.unread) "New Chat" else if (r.fromThem) "Received" else "Sent"
-                    if (r.unread) Dot(8.dp, Color.White)
+                    val label = if (r.u.uid in App.blocked) "Blocked" else if (r.unread) "New Chat" else if (r.fromThem) "Received" else "Sent"
+                    if (r.unread) Dot(8.dp, Color(0xFF0FADFF))
                     else Glyph(if (r.fromThem) G.CHAT else G.SEND, 14.dp, Muted, sw = 2.2f)
                     T(
                         label + if (last.isAudio) " · Voice" else "", 13.5f.sp,
                         if (r.unread) FontWeight.SemiBold else FontWeight.Normal,
-                        if (r.unread) Color.White else Muted, maxLines = 1
+                        if (r.unread) Color(0xFF0FADFF) else Muted, maxLines = 1
                     )
                     T("·", 13.5f.sp, color = Muted)
                     T(agoShort(r.lastTs), 13.5f.sp, color = Muted, maxLines = 1)

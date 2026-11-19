@@ -175,7 +175,17 @@ fun ChatThread(person: ChatUser) {
         Column(Modifier.fillMaxSize()) {
             ThreadHeader(person)
             ThreadMessages(items, rx, msgs, Modifier.weight(1f))
-            Composer(person)
+            if (person.uid in App.blocked) {
+                Row(
+                    Modifier.fillMaxWidth().background(Ink).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    T("You blocked ${person.name}", 14.sp, color = Muted, modifier = Modifier.weight(1f))
+                    Box(Modifier.pressable(true, 0.92f) { App.unblockContact(person.uid, person.name) }.clip(CircleShape).background(Color.White).padding(horizontal = 16.dp, vertical = 9.dp)) {
+                        T("Unblock", 13.sp, FontWeight.Bold, Color.Black)
+                    }
+                }
+            } else Composer(person)
         }
         MsgSheet()
     }
@@ -224,6 +234,13 @@ private fun ThreadHeader(person: ChatUser) {
                 }
             }
         }
+        val isB = person.uid in App.blocked
+        Box(
+            Modifier.pressable(true, 0.9f) {
+                if (isB) App.unblockContact(person.uid, person.name)
+                else App.ask("Block ${person.name}? You won't get their messages or notifications.", "Block", true) { App.blockContact(person.uid, person.name) }
+            }.clip(CircleShape).background(Glass).padding(horizontal = 12.dp, vertical = 8.dp)
+        ) { T(if (isB) "Unblock" else "Block", 12.5f.sp, FontWeight.SemiBold, if (isB) Color.White else Muted) }
     }
 }
 
@@ -306,7 +323,7 @@ private fun ThreadMessages(
                     horizontalArrangement = if (it.isMe) Arrangement.End else Arrangement.Start
                 ) {
                     if (!it.isMe) {
-                        T(it.m.name.uppercase(), 11.5f.sp, FontWeight.ExtraBold, Soft, spacing = 0.6.sp)
+                        T(it.m.name.uppercase(), 11.5f.sp, FontWeight.ExtraBold, Color(0xFF0FADFF), spacing = 0.6.sp)
                         Spacer(Modifier.width(8.dp))
                     }
                     T(fmtClock(it.m.createdMs), 11.sp, color = Color(0xFF6B6B70))
@@ -375,7 +392,7 @@ private fun BubbleRow(
                                 Column(Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
                                     T(
                                         if (o == null) "" else if (o.uid == me) "ME" else o.name.uppercase(), 11.sp, FontWeight.Bold,
-                                        if (isMe) Color(0xAA000000) else Muted, spacing = 0.4.sp, maxLines = 1
+                                        if (isMe) Color(0xAA000000) else if (o?.uid == me) Color(0xFFF23C57) else Color(0xFF0FADFF), spacing = 0.4.sp, maxLines = 1
                                     )
                                     T(
                                         o?.preview?.take(120) ?: "Original message deleted", 13.sp,

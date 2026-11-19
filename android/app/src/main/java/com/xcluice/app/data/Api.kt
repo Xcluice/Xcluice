@@ -210,7 +210,7 @@ object Api {
     }
 
     suspend fun postsByAuthor(email: String): List<Post>? =
-        getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=100")?.let { parsePosts(it) }
+        getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=400")?.let { parsePosts(it) }
 
     suspend fun pinned(): List<Post> =
         getArr("/rest/v1/homework?order=created_at.desc&pinned=eq.true")?.let { parsePosts(it) } ?: emptyList()
@@ -321,7 +321,7 @@ object Api {
     /** afterId == null -> newest 100 (returned oldest first); else everything newer. null = request failed */
     suspend fun messages(afterId: Long?): List<Msg>? {
         val path = if (afterId != null) "/rest/v1/chat_messages?id=gt.$afterId&order=created_at.asc"
-        else "/rest/v1/chat_messages?order=created_at.desc&limit=100"
+        else "/rest/v1/chat_messages?order=created_at.desc&limit=400"
         val a = getArr(path) ?: return null
         val l = parseMsgs(a)
         return if (afterId == null) l.reversed() else l
@@ -435,7 +435,7 @@ object Api {
 
     /** 0 ok, 1 username taken, 2 failed */
     suspend fun updateProfile(u: User, name: String, username: String, bio: String, site: String): Int {
-        val body = JSONObject().put("display_name", name).put("username", username).put("bio", bio).put("website", site)
+        val body = JSONObject().put("display_name", name).put("username", username).put("bio", bio).put("website", if (site.isBlank()) JSONObject.NULL else site)
         val (c, b) = call { req("/rest/v1/fosthub_users?id=eq.${u.id}&select=id,username,display_name,bio,website").header("Content-Type", "application/json").header("Prefer", "return=representation").patch(jsonBody(body)) }
         if (c == 409) return 1
         if (c !in 200..299 || !runCatching { JSONArray(b).length() > 0 }.getOrDefault(false)) return 2
@@ -448,13 +448,35 @@ object Api {
     suspend fun changePassword(email: String, old: String, new: String): String? {
         val chk = Request.Builder().url(Cfg.SB + "/auth/v1/token?grant_type=password").header("apikey", Cfg.KEY)
             .post(jsonBody(JSONObject().put("email", email).put("password", old))).build()
-        val r1 = withContext(Dispatchers.IO) { try { http.newCall(chk).execute().use { it.code } } catch (e: Exception) { -1 } }
-        if (r1 == -1) return "No connection"
-        if (r1 !in 200..299) return "Current password is incorrect."
+        val r1 = withContext(Dispatchers.IO) { try { http.newCall(chk).execute().use { it.code to (it.body?.string() ?: "") } } catch (e: Exception) { -1 to "" } }
+        if (r1.first == -1) return "No connection"
+        if (r1.first !in 200..299) return "Current password is incorrect."
+        runCatching { applySession(JSONObject(r1.second)) }
         val (c, b) = call { Request.Builder().url(Cfg.SB + "/auth/v1/user").header("apikey", Cfg.KEY).apply { token?.let { header("Authorization", "Bearer $it") } }.put(jsonBody(JSONObject().put("password", new))) }
         if (c in 200..299) return null
-        return runCatching { JSONObject(b).let { it.str("msg") ?: it.str("message") } }.getOrNull() ?: "Couldn't change password."
+        return runCatching { JSONObject(b).let { it.str("msg") ?: it.str("message") ?: it.str("error_description") } }.getOrNull() ?: "Couldn't change password."
     }
+
+    /** Resolve the real sign-in email for a username (survives username changes). */
+    suspend fun loginEmail(username: String): String? {
+        val r = Request.Builder().url(Cfg.SB + "/rest/v1/rpc/login_email").header("apikey", Cfg.KEY)
+            .post(jsonBody(JSONObject().put("u", username))).build()
+        val res = withContext(Dispatchers.IO) { try { http.newCall(r).execute().use { it.code to (it.body?.string() ?: "") } } catch (e: Exception) { -1 to "" } }
+        if (res.first !in 200..299) return null
+        val t = res.second.trim().trim('"')
+        return if (t.isBlank() || t == "null") null else t
+    }
+
+    suspend fun blocks(uid: String): Set<String>? {
+        val a = getArr("/rest/v1/chat_blocks?uid=eq.${enc(uid)}&select=blocked_uid") ?: return null
+        return (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("blocked_uid") }.toSet()
+    }
+
+    suspend fun blockUser(uid: String, other: String): Boolean =
+        call { req("/rest/v1/chat_blocks").header("Content-Type", "application/json").header("Prefer", "return=minimal,resolution=ignore-duplicates").post(jsonBody(JSONObject().put("uid", uid).put("blocked_uid", other))) }.first in 200..299
+
+    suspend fun unblockUser(uid: String, other: String): Boolean =
+        call { req("/rest/v1/chat_blocks?uid=eq.${enc(uid)}&blocked_uid=eq.${enc(other)}").delete() }.first in 200..299
 
     suspend fun download(url: String, dest: java.io.File): Boolean = withContext(Dispatchers.IO) {
         try {

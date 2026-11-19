@@ -24,6 +24,7 @@ import com.xcluice.app.data.User
 import com.xcluice.app.data.parseMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import com.xcluice.app.data.isImageUrl
 import kotlinx.coroutines.Job
@@ -100,6 +101,7 @@ object App {
     var flashId by mutableStateOf<Long?>(null)
     var toastMsg by mutableStateOf<String?>(null)
 
+    var blocked by mutableStateOf<Set<String>>(emptySet())
     private val seenIds = HashSet<Long>()
     val renderedIds = HashSet<Long>()
     private var lastId: Long? = null
@@ -142,6 +144,19 @@ object App {
             }
         }
         if (Api.refreshToken == null) user = null
+        if (user != null) {
+            runCatching {
+                blocked = JSONArray(prefs.getString("blocks", "[]")).let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
+                JSONArray(prefs.getString("c_users", "[]")).let { a ->
+                    chatUsers = (0 until a.length()).map { val o = a.getJSONObject(it); ChatUser(o.optString("u"), o.optString("n"), o.optString("e"), if (o.isNull("p")) null else o.optString("p"), if (o.isNull("l")) null else o.optString("l")) }
+                    if (chatUsers.isNotEmpty()) chatUsersLoaded = true
+                }
+                JSONArray(prefs.getString("c_msgs", "[]")).let { a ->
+                    val l = (0 until a.length()).map { val o = a.getJSONObject(it); Msg(o.getLong("i"), o.optString("u"), o.optString("n"), o.optString("t"), if (o.isNull("o")) null else o.optString("o"), if (o.isNull("r")) null else o.optLong("r"), o.optString("c"), o.optLong("m")) }
+                    if (l.isNotEmpty()) { messages = l; l.forEach { seenIds.add(it.id) }; lastId = l.maxOf { it.id } }
+                }
+            }
+        }
         guest = prefs.getBoolean("guest", false)
         scope.launch {
             val u = user
@@ -177,7 +192,7 @@ object App {
         if (clean.length < 3) return "Username min 3 characters"
         if (pass.length < 6) return "Password min 6 characters"
         if (register && pass != confirm) return "Passwords do not match"
-        val email = "$clean@${Cfg.AUTH_DOMAIN}"
+        val email = if (register) "$clean@${Cfg.AUTH_DOMAIN}" else (Api.loginEmail(clean) ?: "$clean@${Cfg.AUTH_DOMAIN}")
         val res = if (register) Api.signUp(email, pass, clean, clean.replaceFirstChar { it.uppercase() })
         else Api.signIn(email, pass)
         if (!res.ok || res.userId == null) return res.msg.ifBlank { "Something went wrong" }
@@ -197,7 +212,8 @@ object App {
         com.xcluice.app.data.Fcm.unregister()
         scope.launch { Api.clearSession(); saveSession() }
         user = null; guest = false; thread = null; tab = 0
-        messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false
+        messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false; blocked = emptySet()
+        prefs.edit().remove("c_users").remove("c_msgs").remove("blocks").apply()
         follows = emptyList(); stories = emptyList(); storyQueue = null; profile = null
         liked = emptySet(); seenIds.clear(); renderedIds.clear(); lastId = null
         prefs.edit().remove("user").putBoolean("guest", false).apply()
@@ -242,7 +258,7 @@ object App {
         val base = prefs.getLong("n_msg", -1L)
         val max = fresh.maxOf { it.id }
         if (base < 0) { prefs.edit().putLong("n_msg", max).apply(); return }
-        val mine = fresh.filter { it.id > base && it.uid != me && it.toUid == me }
+        val mine = fresh.filter { it.id > base && it.uid != me && it.toUid == me && it.uid !in blocked }
         if (max > base) prefs.edit().putLong("n_msg", max).apply()
         if (!foreground) com.xcluice.app.data.Notifier.messages(appCtx, mine.map { it.name to (if (it.isAudio) "Voice message" else it.text) })
     }
@@ -257,7 +273,7 @@ object App {
             val rows = Api.messages(base)
             if (rows != null && rows.isNotEmpty()) {
                 prefs.edit().putLong("n_msg", rows.maxOf { it.id }).apply()
-                com.xcluice.app.data.Notifier.messages(appCtx, rows.filter { it.uid != me.id && it.toUid == me.id }.map { it.name to (if (it.isAudio) "Voice message" else it.text) })
+                com.xcluice.app.data.Notifier.messages(appCtx, rows.filter { it.uid != me.id && it.toUid == me.id && it.uid !in blocked }.map { it.name to (if (it.isAudio) "Voice message" else it.text) })
             }
         }
         val pb = prefs.getLong("n_post", -1L)
@@ -520,7 +536,10 @@ object App {
         }
         rt?.start(Api.token)
         loopJob = scope.launch {
-            fetchMessages(); user?.let { Api.presence(it) }; fetchUsers(); syncState()
+            coroutineScope {
+                launch { fetchMessages() }; launch { fetchUsers() }; launch { syncState() }; launch { loadBlocks() }
+                launch { user?.let { Api.presence(it) } }
+            }
             var t = 0
             while (loopsOn) {
                 if (!foreground) { delay(4000); backgrounded = true; continue }
@@ -537,7 +556,37 @@ object App {
     }
 
     private suspend fun fetchUsers() {
-        Api.chatUsers()?.let { chatUsers = it; chatUsersLoaded = true }
+        Api.chatUsers()?.let { chatUsers = it; chatUsersLoaded = true; cacheChat() }
+    }
+
+    private fun cacheChat() {
+        val us = chatUsers; val ms = messages.filter { !it.temp }.takeLast(300)
+        scope.launch(Dispatchers.Default) {
+            runCatching {
+                val ua = JSONArray(); us.forEach { ua.put(JSONObject().put("u", it.uid).put("n", it.name).put("e", it.email).put("p", it.photo ?: JSONObject.NULL).put("l", it.lastActive ?: JSONObject.NULL)) }
+                val ma = JSONArray(); ms.forEach { ma.put(JSONObject().put("i", it.id).put("u", it.uid).put("n", it.name).put("t", it.text).put("o", it.toUid ?: JSONObject.NULL).put("r", it.replyTo ?: JSONObject.NULL).put("c", it.createdAt).put("m", it.createdMs)) }
+                prefs.edit().putString("c_users", ua.toString()).putString("c_msgs", ma.toString()).apply()
+            }
+        }
+    }
+
+    private suspend fun loadBlocks() {
+        val me = user?.id ?: return
+        Api.blocks(me)?.let { blocked = it; prefs.edit().putString("blocks", JSONArray(it.toList()).toString()).apply() }
+    }
+
+    fun blockContact(uid: String, name: String) {
+        val me = user?.id ?: return
+        blocked = blocked + uid
+        prefs.edit().putString("blocks", JSONArray(blocked.toList()).toString()).apply()
+        scope.launch { if (Api.blockUser(me, uid)) toast("$name blocked") else { blocked = blocked - uid; toast("Couldn't block") } }
+    }
+
+    fun unblockContact(uid: String, name: String) {
+        val me = user?.id ?: return
+        blocked = blocked - uid
+        prefs.edit().putString("blocks", JSONArray(blocked.toList()).toString()).apply()
+        scope.launch { if (Api.unblockUser(me, uid)) toast("$name unblocked") else { blocked = blocked + uid; toast("Couldn't unblock") } }
     }
 
     private suspend fun fetchMessages() {
@@ -547,6 +596,7 @@ object App {
         if (fresh.isEmpty()) return
         messages = messages.filter { !it.temp } + fresh
         lastId = rows.last().id
+        cacheChat()
         notifyFresh(fresh)
     }
 

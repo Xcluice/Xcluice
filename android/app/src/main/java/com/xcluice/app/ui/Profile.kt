@@ -192,6 +192,13 @@ private fun ProfileBody(who: Who, own: Boolean, onClose: (() -> Unit)?) {
                             val i = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "https://xcluice.vercel.app/#profile-$id") }
                             ctx.startActivity(Intent.createChooser(i, "Share profile").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
+                        if (!own && App.user != null && id.isNotBlank()) {
+                            val isB = id in App.blocked
+                            val nm = chatUser?.name ?: "this user"
+                            BtnGhost(if (isB) "Unblock" else "Block", Modifier.weight(1f)) {
+                                if (isB) App.unblockContact(id, nm) else App.ask("Block $nm? You won't get their messages or notifications.", "Block", true) { App.blockContact(id, nm) }
+                            }
+                        }
                         if (own) {
                             BtnGhost("Photo", Modifier.weight(1f), G.CAMERA) { pickPhoto.launch("image/*") }
                             BtnGhost("Sign out", Modifier.weight(1f)) { App.ask("Sign out of Xcluice?", "Sign out", true) { App.signOut() } }
