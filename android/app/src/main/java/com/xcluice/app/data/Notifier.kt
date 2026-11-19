@@ -31,7 +31,7 @@ object Notifier {
             nm.createNotificationChannel(NotificationChannel(CH_MSG, "Messages", NotificationManager.IMPORTANCE_HIGH))
             nm.createNotificationChannel(NotificationChannel(CH_POST, "New posts", NotificationManager.IMPORTANCE_DEFAULT))
         }
-        if (App.fcmConfirmed()) { WorkManager.getInstance(ctx).cancelUniqueWork("xc-check"); return }
+
         WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
             "xc-check", ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<CheckWorker>(15, TimeUnit.MINUTES).build()
@@ -85,7 +85,7 @@ object Notifier {
 
 class CheckWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result {
-        if (!App.foreground && !App.svcRunning && !App.fcmConfirmed()) runCatching { App.checkNotifications() }
+        if (!App.foreground && !App.svcRunning) runCatching { App.checkNotifications() }
         return Result.success()
     }
 }
