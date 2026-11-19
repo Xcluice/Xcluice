@@ -321,7 +321,7 @@ object Api {
     /** afterId == null -> newest 100 (returned oldest first); else everything newer. null = request failed */
     suspend fun messages(afterId: Long?): List<Msg>? {
         val path = if (afterId != null) "/rest/v1/chat_messages?id=gt.$afterId&order=created_at.asc"
-        else "/rest/v1/chat_messages?order=created_at.desc&limit=400"
+        else "/rest/v1/chat_messages?order=created_at.desc&limit=100"
         val a = getArr(path) ?: return null
         val l = parseMsgs(a)
         return if (afterId == null) l.reversed() else l
