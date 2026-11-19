@@ -93,7 +93,8 @@ class MainActivity : ComponentActivity() {
         App.tab = intent?.getIntExtra("tab", App.tab) ?: App.tab
         if (App.user != null) com.xcluice.app.data.Push.start(applicationContext)
         askBatteryExemption()
-        setContent { Root() }
+        window.decorView.layoutDirection = android.view.View.LAYOUT_DIRECTION_LTR
+        setContent { androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) { Root() } }
     }
 }
 
