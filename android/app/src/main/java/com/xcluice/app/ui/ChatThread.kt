@@ -72,6 +72,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -367,7 +368,7 @@ private fun BubbleRow(
                 Box(
                     Modifier
                         .clip(shape)
-                        .background(if (isMe) Color(0xFF0FADFF) else Glass)
+                        .then(if (isMe) Modifier.background(Brush.linearGradient(listOf(Color(0xFF0FADFF), Color(0xFF00C7C0)), androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset.Infinite)) else Modifier.background(Glass))
                         .drawBehind { drawRect(flash) }
                         .alpha05(m.temp)
                         .pointerInput(m.id) {
@@ -598,7 +599,7 @@ private fun Composer(person: ChatUser) {
                     ) { has ->
                         if (has) {
                             Box(
-                                Modifier.size(42.dp).pressable(true, 0.86f) { send() }.clip(CircleShape).background(Color(0xFF0FADFF)),
+                                Modifier.size(42.dp).pressable(true, 0.86f) { send() }.clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFF0FADFF), Color(0xFF00D4C8)), androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset.Infinite)),
                                 contentAlignment = Alignment.Center
                             ) { Glyph(G.SEND, 19.dp, Color.White, sw = 2.4f) }
                         } else {

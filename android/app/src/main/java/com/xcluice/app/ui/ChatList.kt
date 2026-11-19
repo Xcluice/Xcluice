@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -229,7 +230,7 @@ private fun ChatRowView(r: ChatRow, index: Int) {
             if (r.unread) {
                 val t = rememberInfiniteTransition(label = "ring")
                 val a by t.animateFloat(0.35f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "ra")
-                Box(Modifier.size(62.dp).graphicsLayer { alpha = a }.border(2.5.dp, Color(0xFF0FADFF), CircleShape))
+                Box(Modifier.size(62.dp).graphicsLayer { alpha = a }.border(2.5.dp, Brush.linearGradient(listOf(Color(0xFF0FADFF), Color(0xFF00E5C3)), androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset.Infinite), CircleShape))
             }
             Avatar(u.photo, u.email.ifBlank { u.name }, 54.dp, Modifier.pressable(true, 0.88f) { App.openProfile(com.xcluice.app.data.Who(u.name, u.email, u.photo, u.uid)) })
             if (r.activeNow) {
