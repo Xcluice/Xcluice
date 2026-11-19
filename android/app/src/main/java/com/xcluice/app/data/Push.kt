@@ -76,5 +76,6 @@ class BootReceiver : BroadcastReceiver() {
             App.ensureInit(ctx.applicationContext)
             Notifier.setup(ctx.applicationContext)
             Push.start(ctx.applicationContext)
+        }
     }
 }
