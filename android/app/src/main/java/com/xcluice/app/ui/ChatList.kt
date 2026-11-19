@@ -122,13 +122,14 @@ private fun ChatList() {
     val bucket = App.tick / 15000L
     val rows = remember(users, msgs, reads, q, bucket) {
         val now = System.currentTimeMillis()
+        val latest = HashMap<String, Msg>()
+        for (m in msgs) {
+            val to = m.toUid ?: continue
+            val peer = if (m.uid == me.id) to else if (to == me.id) m.uid else continue
+            latest[peer] = m
+        }
         users.filter { it.uid != me.id }.map { u ->
-            var last: Msg? = null
-            for (i in msgs.indices.reversed()) {
-                val m = msgs[i]
-                val to = m.toUid ?: continue
-                if ((m.uid == me.id && to == u.uid) || (m.uid == u.uid && to == me.id)) { last = m; break }
-            }
+            val last: Msg? = latest[u.uid]
             val lastTs = last?.createdMs ?: 0L
             val fromThem = last != null && last.uid == u.uid
             val unread = fromThem && lastTs > (reads[u.uid] ?: 0L) && u.uid !in App.blocked

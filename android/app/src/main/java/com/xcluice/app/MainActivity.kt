@@ -34,6 +34,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -118,18 +120,19 @@ private fun Root() {
     }
 }
 
+private fun Modifier.androidx_zIndex(z: Float) = this.then(Modifier.zIndex(z))
+private fun Modifier.androidx_alpha(a: Float) = this.then(Modifier.alpha(a))
+
 @Composable
 private fun MainShell() {
     Box(Modifier.fillMaxSize()) {
-        AnimatedContent(
-            targetState = App.tab,
-            transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(160)) },
-            label = "tabs"
-        ) { t ->
-            when (t) {
-                0 -> FeedTab()
-                1 -> ChatTab()
-                else -> ProfileTab()
+        val visited = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateListOf(App.tab) }
+        if (App.tab !in visited) visited.add(App.tab)
+        for (i in 0..2) {
+            if (i !in visited) continue
+            val a by androidx.compose.animation.core.animateFloatAsState(if (App.tab == i) 1f else 0f, tween(220), label = "tab$i")
+            Box(Modifier.fillMaxSize().androidx_zIndex(if (App.tab == i) 1f else 0f).androidx_alpha(a)) {
+                when (i) { 0 -> FeedTab(); 1 -> ChatTab(); else -> ProfileTab() }
             }
         }
         BottomBar(Modifier.align(Alignment.BottomCenter))

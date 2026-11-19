@@ -118,7 +118,7 @@ object App {
 
     @Volatile var svcRunning = false
     @Volatile var pushToken: String? = null
-    fun markPushReady(t: String?) { pushToken = t; prefs.edit().apply { if (t == null) remove("push_token") else putString("push_token", t) }.apply() }
+    fun markPushReady(t: String?) { if (t != null) markFcmSeen(); pushToken = t; prefs.edit().apply { if (t == null) remove("push_token") else putString("push_token", t) }.apply() }
     /** True once a real Firebase push has been received on this device; only then is the polling service retired. */
     fun fcmConfirmed(): Boolean = prefs.getBoolean("fcm_seen", false)
     fun markFcmSeen() { prefs.edit().putBoolean("fcm_seen", true).apply() }
@@ -157,10 +157,13 @@ object App {
                 }
             }
         }
+        runCatching {
+            prefs.getString("c_posts", null)?.let { raw -> val l = Api.parsePostsPublic(JSONArray(raw)); if (l.isNotEmpty()) { posts = l.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs }); ready = true } }
+        }
         guest = prefs.getBoolean("guest", false)
         scope.launch {
             val u = user
-            if (u != null) {
+            if (u != null) launch {
                 val fresh = Api.profile(u.id)
                 if (fresh != null) { saveUser(fresh) }
                 else if (Api.token == null) { user = null }
@@ -238,9 +241,10 @@ object App {
             com.xcluice.app.data.Push.register()
             com.xcluice.app.data.Fcm.register()
         }
-        jobs.forEach { it.join() }
+        jobs.first().join()
         prefetchImages()
         ready = true
+        jobs.forEach { it.join() }
     }
 
     private fun prefetchImages() {
@@ -303,18 +307,21 @@ object App {
     fun isVerified(uid: String?, email: String?): Boolean =
         (uid != null && uid in verifiedIds) || (!email.isNullOrBlank() && email.lowercase() in verifiedEmails)
 
-    fun refresh() { if (showSkeleton) return; showSkeleton = true; scope.launch { val t0 = System.currentTimeMillis(); loadPosts(); val d = 650 - (System.currentTimeMillis() - t0); if (d > 0) delay(d); showSkeleton = false } }
+    fun refresh() { if (showSkeleton) return; showSkeleton = true; scope.launch { loadPosts(); showSkeleton = false } }
     suspend fun loadPostsNow() { loadPosts() }
 
     suspend fun loadPosts() {
         postsLoading = true
-        val rows = Api.posts(30)
+        val (rows, pins) = kotlinx.coroutines.coroutineScope {
+            val a = async { Api.posts(30) }; val b = async { Api.pinned() }
+            a.await() to b.await()
+        }
         if (rows == null) {
             postsError = netMsg()
             if (posts.isNotEmpty()) toast("Couldn't refresh posts \u00B7 " + netMsg())
         } else {
             postsError = null
-            val pins = Api.pinned()
+            Api.lastPostsRaw?.let { r -> prefs.edit().putString("c_posts", r).apply() }
             val seen = rows.map { it.id }.toSet()
             val all = rows + pins.filter { it.id !in seen }
             posts = all.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs })
@@ -547,7 +554,8 @@ object App {
                 delay(1000)
                 t++
                 tick = System.currentTimeMillis()
-                if (t % 4 == 0) { fetchMessages(); syncState() }
+                if (t % 2 == 0) scope.launch { fetchMessages() }
+                if (t % 12 == 0) scope.launch { syncState() }
                 if (t % 25 == 0) user?.let { Api.presence(it) }
                 if (t % 15 == 0) fetchUsers()
                 if (t % 60 == 0) loadSocial()

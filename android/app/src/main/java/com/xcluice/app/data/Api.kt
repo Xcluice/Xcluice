@@ -176,6 +176,9 @@ object Api {
     }
 
     // ---------- posts ----------
+    fun parsePostsPublic(a: JSONArray): List<Post> = parsePosts(a)
+    @Volatile var lastPostsRaw: String? = null
+    private const val POST_COLS = "id,title,subject,file_url,author_name,author_email,author_photo,created_at,likes,taps,pinned,link_url,thumb_url"
     private fun parsePosts(a: JSONArray): List<Post> {
         val out = ArrayList<Post>()
         for (i in 0 until a.length()) {
@@ -204,16 +207,16 @@ object Api {
     }
 
     suspend fun posts(limit: Int, before: String? = null): List<Post>? {
-        var p = "/rest/v1/homework?order=created_at.desc&limit=$limit"
+        var p = "/rest/v1/homework?select=$POST_COLS&order=created_at.desc&limit=$limit"
         if (before != null) p += "&created_at=lt.${enc(before)}"
-        return getArr(p)?.let { parsePosts(it) }
+        return getArr(p)?.let { if (before == null) lastPostsRaw = it.toString(); parsePosts(it) }
     }
 
     suspend fun postsByAuthor(email: String): List<Post>? =
-        getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=400")?.let { parsePosts(it) }
+        getArr("/rest/v1/homework?author_email=eq.${enc(email)}&order=created_at.desc&limit=100")?.let { parsePosts(it) }
 
     suspend fun pinned(): List<Post> =
-        getArr("/rest/v1/homework?order=created_at.desc&pinned=eq.true")?.let { parsePosts(it) } ?: emptyList()
+        getArr("/rest/v1/homework?select=$POST_COLS&order=created_at.desc&pinned=eq.true")?.let { parsePosts(it) } ?: emptyList()
 
     suspend fun createPost(user: User, title: String, subject: String, fileUrl: String, linkUrl: String?, thumbUrl: String?): Boolean {
         val o = JSONObject().put("title", title).put("subject", subject).put("file_url", fileUrl)
