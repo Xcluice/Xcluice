@@ -131,7 +131,7 @@ private fun MainShell() {
         for (i in 0..2) {
             if (i !in visited) continue
             val a by androidx.compose.animation.core.animateFloatAsState(if (App.tab == i) 1f else 0f, tween(220), label = "tab$i")
-            Box(Modifier.fillMaxSize().androidx_zIndex(if (App.tab == i) 1f else 0f).androidx_alpha(a)) {
+            Box(Modifier.fillMaxSize().androidx_zIndex(if (App.tab == i) 0f else -1f).androidx_alpha(a)) {
                 when (i) { 0 -> FeedTab(); 1 -> ChatTab(); else -> ProfileTab() }
             }
         }
