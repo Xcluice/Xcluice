@@ -229,7 +229,7 @@ private fun ChatRowView(r: ChatRow, index: Int) {
             if (r.unread) {
                 val t = rememberInfiniteTransition(label = "ring")
                 val a by t.animateFloat(0.35f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "ra")
-                Box(Modifier.size(62.dp).graphicsLayer { alpha = a }.border(2.5.dp, Color.White, CircleShape))
+                Box(Modifier.size(62.dp).graphicsLayer { alpha = a }.border(2.5.dp, Color(0xFF0FADFF), CircleShape))
             }
             Avatar(u.photo, u.email.ifBlank { u.name }, 54.dp, Modifier.pressable(true, 0.88f) { App.openProfile(com.xcluice.app.data.Who(u.name, u.email, u.photo, u.uid)) })
             if (r.activeNow) {

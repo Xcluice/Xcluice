@@ -367,7 +367,7 @@ private fun BubbleRow(
                 Box(
                     Modifier
                         .clip(shape)
-                        .background(if (isMe) Color.White else Glass)
+                        .background(if (isMe) Color(0xFF0FADFF) else Glass)
                         .drawBehind { drawRect(flash) }
                         .alpha05(m.temp)
                         .pointerInput(m.id) {
@@ -388,22 +388,22 @@ private fun BubbleRow(
                                     .background(if (isMe) Color(0x29000000) else Glass2)
                                     .pointerInput(ro) { detectTapGestures(onTap = { onJump(ro) }) }
                             ) {
-                                Box(Modifier.width(2.dp).fillMaxHeight().background(if (isMe) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)))
+                                Box(Modifier.width(2.dp).fillMaxHeight().background(if (isMe) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.28f)))
                                 Column(Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
                                     T(
                                         if (o == null) "" else if (o.uid == me) "ME" else o.name.uppercase(), 11.sp, FontWeight.Bold,
-                                        if (isMe) Color(0xAA000000) else if (o?.uid == me) Color(0xFFF23C57) else Color(0xFF0FADFF), spacing = 0.4.sp, maxLines = 1
+                                        if (isMe) Color(0xD9FFFFFF) else if (o?.uid == me) Color(0xFFF23C57) else Color(0xFF8E8E93), spacing = 0.4.sp, maxLines = 1
                                     )
                                     T(
                                         o?.preview?.take(120) ?: "Original message deleted", 13.sp,
-                                        color = if (isMe) Color(0xCC000000) else Soft, maxLines = 1
+                                        color = if (isMe) Color(0xD9FFFFFF) else Soft, maxLines = 1
                                     )
                                 }
                             }
                         }
                         if (m.isAudio) VoiceBubble(m, isMe)
-                        else if (firstUrl(m.text) != null) LinkText(m.text, 16.sp, if (isMe) Color.Black else Color.White, lineHeight = 22.sp, linkColor = if (isMe) Color.Black else Color.White)
-                        else T(m.text, 16.sp, color = if (isMe) Color.Black else Color.White, lineHeight = 22.sp)
+                        else if (firstUrl(m.text) != null) LinkText(m.text, 16.sp, Color.White, lineHeight = 22.sp, linkColor = Color.White)
+                        else T(m.text, 16.sp, color = Color.White, lineHeight = 22.sp)
                     }
                 }
                 BurstLayer(m.id, Modifier.align(Alignment.Center))
@@ -413,7 +413,7 @@ private fun BubbleRow(
                 val mine = rs.any { it.uid == me }
                 Row(
                     Modifier.padding(horizontal = 8.dp).offset(y = (-6).dp).popIn()
-                        .clip(CircleShape).background(if (mine) Color(0x38FFFFFF) else Glass)
+                        .clip(CircleShape).background(if (mine) Color(0x380FADFF) else Glass)
                         .padding(horizontal = 9.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -482,13 +482,13 @@ private fun VoiceBubble(m: Msg, isMe: Boolean) {
     val playing = VoicePlayer.playingId == m.id
     val bars = remember(m.id) { barHeights(m.id) }
     val shown = if (playing && VoicePlayer.seconds > 0f) fmtDur(VoicePlayer.seconds) else fmtDur(m.audioDur.toFloat())
-    val fg = if (isMe) Color.Black else Color.White
+    val fg = if (isMe) Color.White else Color(0xFF0FADFF)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(end = 10.dp)) {
         Box(
             Modifier.size(36.dp).pressable(true, 0.86f) { VoicePlayer.toggle(m.id, m.audioUrl) }
-                .clip(CircleShape).background(if (isMe) Color.Black else Color.White),
+                .clip(CircleShape).background(if (isMe) Color.White else Color(0xFF0FADFF)),
             contentAlignment = Alignment.Center
-        ) { Glyph(if (playing) G.PAUSE else G.PLAY, 16.dp, if (isMe) Color.White else Color.Black) }
+        ) { Glyph(if (playing) G.PAUSE else G.PLAY, 16.dp, if (isMe) Color(0xFF0A8FD6) else Color.White) }
         val phase = if (playing) {
             val t = rememberInfiniteTransition(label = "wv")
             val ph by t.animateFloat(0f, (2 * PI).toFloat(), infiniteRepeatable(tween(700, easing = LinearEasing)), label = "ph")
@@ -504,12 +504,12 @@ private fun VoiceBubble(m: Msg, isMe: Boolean) {
                 val pulse = if (playing) 0.82f + 0.18f * sin(phase + i * 0.7f) else 1f
                 val h = bars[i] * size.height * pulse
                 drawRoundRect(
-                    if (i < k) fg else fg.copy(alpha = 0.32f),
+                    if (i < k) fg else Color.White.copy(alpha = if (isMe) 0.45f else 0.28f),
                     Offset(i * (bw + gap), (size.height - h) / 2f), Size(bw, h), CornerRadius(bw / 2f, bw / 2f)
                 )
             }
         }
-        T(shown, 12.sp, color = if (isMe) Color(0xCC000000) else Soft, modifier = Modifier.width(34.dp), align = TextAlign.End)
+        T(shown, 12.sp, color = if (isMe) Color(0xE6FFFFFF) else Soft, modifier = Modifier.width(34.dp), align = TextAlign.End)
     }
 }
 
@@ -539,7 +539,7 @@ private fun Composer(person: ChatUser) {
     }
     fun send() { App.sendText(text); text = "" }
 
-    val ring by animateColorAsState(if (focused) Color(0x73FFFFFF) else Color.Transparent, tween(200), label = "ring")
+    val ring by animateColorAsState(if (focused) Color(0x730FADFF) else Color.Transparent, tween(200), label = "ring")
 
     Column(
         Modifier.fillMaxWidth().background(Ink.copy(alpha = 0.96f))
@@ -598,9 +598,9 @@ private fun Composer(person: ChatUser) {
                     ) { has ->
                         if (has) {
                             Box(
-                                Modifier.size(42.dp).pressable(true, 0.86f) { send() }.clip(CircleShape).background(Color.White),
+                                Modifier.size(42.dp).pressable(true, 0.86f) { send() }.clip(CircleShape).background(Color(0xFF0FADFF)),
                                 contentAlignment = Alignment.Center
-                            ) { Glyph(G.SEND, 19.dp, Color.Black, sw = 2.4f) }
+                            ) { Glyph(G.SEND, 19.dp, Color.White, sw = 2.4f) }
                         } else {
                             Box(
                                 Modifier.size(42.dp).pressable(true, 0.86f) {
