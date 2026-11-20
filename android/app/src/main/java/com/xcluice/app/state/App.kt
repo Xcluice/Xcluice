@@ -34,6 +34,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 class Confirm(val msg: String, val ok: String, val danger: Boolean, val onOk: () -> Unit)
 
@@ -126,10 +128,47 @@ object App {
     fun advancePostMark(id: Long): Boolean { val cur = prefs.getLong("n_post", -1L); if (id > cur) { prefs.edit().putLong("n_post", id).apply(); return true }; return false }
     fun appContext(): Context = appCtx
 
+    /** Session tokens are worth stealing, so they live in a Keystore-backed encrypted file
+     *  instead of plain SharedPreferences — safe even if the device is rooted or a backup
+     *  of app data is extracted. Falls back to a plain store only if the encrypted one is
+     *  corrupt (e.g. after a Keystore wipe), so a bad state can't lock people out. */
+    private fun securePrefs(ctx: Context): SharedPreferences = try {
+        val key = MasterKey.Builder(ctx).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        EncryptedSharedPreferences.create(
+            ctx, "xcluice_secure", key,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        runCatching { ctx.deleteSharedPreferences("xcluice_secure") }
+        ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE)
+    }
+
+    /** One-time move from the old plaintext "xcluice" file into the encrypted one, so people
+     *  upgrading don't get signed out. Runs once; the old file is wiped either way. */
+    private fun migrateLegacyPrefs(ctx: Context) {
+        val legacy = ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE)
+        if (legacy.all.isEmpty()) return
+        if (prefs.getString("access", null) == null && prefs.getString("user", null) == null) {
+            val e = prefs.edit()
+            for ((k, v) in legacy.all) when (v) {
+                is String -> e.putString(k, v)
+                is Boolean -> e.putBoolean(k, v)
+                is Long -> e.putLong(k, v)
+                is Int -> e.putInt(k, v)
+                is Float -> e.putFloat(k, v)
+                else -> {}
+            }
+            e.apply()
+        }
+        legacy.edit().clear().apply()
+    }
+
     fun init(ctx: Context) {
         inited = true
         appCtx = ctx.applicationContext
-        prefs = ctx.getSharedPreferences("xcluice", Context.MODE_PRIVATE)
+        prefs = securePrefs(ctx)
+        migrateLegacyPrefs(ctx)
         runCatching { val a = JSONArray(prefs.getString("seen", "[]")); seen = (0 until a.length()).map { a.getLong(it) }.toSet() }
         Api.token = prefs.getString("access", null)
         Api.refreshToken = prefs.getString("refresh", null)

@@ -11,13 +11,19 @@
 
     <application
         android:name=".XApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Xcluice"
         android:supportsRtl="false"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.Xcluice">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notif" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="messages" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

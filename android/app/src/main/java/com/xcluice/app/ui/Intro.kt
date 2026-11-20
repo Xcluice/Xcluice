@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -40,9 +41,6 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.random.Random
-
-private class Part(val ang: Float, val speed: Float, val size: Float, val color: Color)
 
 private fun clamp01(x: Float) = max(0f, min(1f, x))
 private fun easeOut(x: Float): Float { val k = 1f - clamp01(x); return 1f - k * k * k }
@@ -51,17 +49,6 @@ private fun easeInOut(x: Float): Float { val c = clamp01(x); return c * c * (3f 
 @Composable
 fun Intro(onDone: () -> Unit) {
     val p = remember { Animatable(0f) }
-    val parts = remember {
-        val r = Random(11)
-        List(54) { i ->
-            Part(
-                ang = (i / 54f) * (2f * PI.toFloat()) + r.nextFloat() * 0.25f,
-                speed = 0.45f + r.nextFloat() * 0.75f,
-                size = 3f + r.nextFloat() * 6f,
-                color = Confetti[i % Confetti.size]
-            )
-        }
-    }
     var finished by remember { mutableStateOf(false) }
     suspend fun finish() {
         if (finished) return
@@ -87,7 +74,7 @@ fun Intro(onDone: () -> Unit) {
             }
     ) {
         DotField(Modifier.fillMaxSize().graphicsLayer { alpha = easeOut(p.value / 0.3f) })
-        Canvas(Modifier.fillMaxSize()) { drawIntro(p.value, parts) }
+        Canvas(Modifier.fillMaxSize()) { drawIntro(p.value) }
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(0.64f))
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -113,43 +100,80 @@ fun Intro(onDone: () -> Unit) {
     }
 }
 
-private fun DrawScope.drawIntro(t: Float, parts: List<Part>) {
+private fun lerpO(a: Offset, b: Offset, f: Float) = Offset(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f)
+
+private fun DrawScope.poly(c: Color, vararg p: Offset) {
+    val path = Path().apply {
+        moveTo(p[0].x, p[0].y)
+        for (i in 1 until p.size) lineTo(p[i].x, p[i].y)
+        close()
+    }
+    drawPath(path, c)
+}
+
+/** The app icon: a "\" bar, then a "/" blade slashes through it and gets cut in two. */
+private fun DrawScope.drawIntro(t: Float) {
     val cx = size.width / 2f
     val cy = size.height * 0.36f
-    val half = min(size.width, size.height) * 0.17f
-    val sw = half * 0.42f
-    val pulse = 1f + 0.09f * sin(PI.toFloat() * clamp01((t - 0.40f) / 0.22f))
+    val minDim = min(size.width, size.height)
+    val k = (minDim * 0.34f) / 46.8f
+    fun pt(x: Float, y: Float) = Offset(cx + (x - 54f) * k, cy + (y - 54f) * k)
 
-    withTransform({ scale(pulse, pulse, Offset(cx, cy)) }) {
-        val s1 = easeOut((t - 0.06f) / 0.24f)
-        val s2 = easeOut((t - 0.20f) / 0.24f)
-        if (s1 > 0f) {
-            drawLine(
-                Color.White, Offset(cx - half, cy - half),
-                Offset(cx - half + 2f * half * s1, cy - half + 2f * half * s1), sw, StrokeCap.Round
-            )
-        }
-        if (s2 > 0f) {
-            drawLine(
-                Color.White, Offset(cx + half, cy - half),
-                Offset(cx + half - 2f * half * s2, cy - half + 2f * half * s2), sw, StrokeCap.Round
-            )
+    // main "\" bar (exact launcher-icon geometry)
+    val a = pt(30.6f, 33.2f); val b = pt(42.3f, 33.2f); val c = pt(65.7f, 74.8f); val d = pt(77.4f, 74.8f)
+    // full "/" band: top edge t0-t1, bottom edge b0-b1
+    val t0 = pt(68.04f, 33.2f); val t1 = pt(77.4f, 33.2f); val b0 = pt(30.6f, 74.8f); val b1 = pt(39.96f, 74.8f)
+    val uA = 0.3063f; val uB = 0.6937f  // where the main bar cuts the "/" band
+
+    // part of the "/" band between u0..u1 along its length, thinned to width w (1 = full)
+    fun band(u0: Float, u1: Float, w: Float) {
+        if (u1 <= u0 || w <= 0f) return
+        val l0 = lerpO(t0, b0, u0); val r0 = lerpO(t1, b1, u0)
+        val l1 = lerpO(t0, b0, u1); val r1 = lerpO(t1, b1, u1)
+        val m0 = lerpO(l0, r0, 0.5f); val m1 = lerpO(l1, r1, 0.5f)
+        poly(Color.White, lerpO(m0, l0, w), lerpO(m0, r0, w), lerpO(m1, r1, w), lerpO(m1, l1, w))
+    }
+
+    val s1 = easeOut((t - 0.05f) / 0.22f)        // "\" bar draws in
+    val sweep = easeInOut((t - 0.30f) / 0.12f)   // "/" blade slashes across
+    val cut = easeOut((t - 0.40f) / 0.10f)       // the part inside the bar is cut away
+    val jolt = sin(PI.toFloat() * clamp01((t - 0.33f) / 0.12f))
+    val shake = sin(t * 140f) * jolt * 5.dp.toPx()
+    val pulse = 1f + 0.07f * sin(PI.toFloat() * clamp01((t - 0.52f) / 0.2f))
+
+    withTransform({ translate(shake, 0f); scale(pulse, pulse, Offset(cx, cy)) }) {
+        if (s1 > 0f) poly(Color.White, a, b, lerpO(b, d, s1), lerpO(a, c, s1))
+        if (sweep > 0f) {
+            band(0f, min(sweep, uA), 1f)
+            band(uB, sweep, 1f)
+            band(uA, min(sweep, uB), 1f - cut)
         }
     }
 
+    // the blade flash: a thin line through the icon along the cut
+    val bl = 1f - clamp01((t - 0.30f) / 0.16f)
+    if (t > 0.30f && bl > 0f) {
+        val tm = lerpO(t0, t1, 0.5f); val bm = lerpO(b0, b1, 0.5f)
+        drawLine(
+            Color.White.copy(alpha = bl * easeOut((t - 0.30f) / 0.04f)),
+            lerpO(tm, bm, -0.7f), lerpO(tm, bm, 1.7f), 2.5f.dp.toPx(), StrokeCap.Round
+        )
+    }
+
     // orbiting satellites
+    val half = minDim * 0.17f
     val orb = easeOut((t - 0.5f) / 0.2f)
     if (orb > 0f) {
         for (i in 0 until 3) {
-            val a = t * 2f * PI.toFloat() * 1.6f + i * (2f * PI.toFloat() / 3f)
+            val ang = t * 2f * PI.toFloat() * 1.6f + i * (2f * PI.toFloat() / 3f)
             val rr = half * 2.05f * orb
-            drawCircle(Color.White, 5.dp.toPx(), Offset(cx + cos(a) * rr, cy + sin(a) * rr))
+            drawCircle(Color.White, 5.dp.toPx(), Offset(cx + cos(ang) * rr, cy + sin(ang) * rr))
         }
         drawCircle(Color.White.copy(alpha = 0.18f * orb), half * 2.05f * orb, Offset(cx, cy), style = Stroke(1.5f.dp.toPx()))
     }
 
-    // shockwave + confetti
-    val q = (t - 0.42f) / 0.58f
+    // shockwave at the moment of the cut
+    val q = (t - 0.40f) / 0.60f
     if (q > 0f) {
         val e = easeOut(q)
         val maxR = size.maxDimension * 0.7f
