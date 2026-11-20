@@ -123,16 +123,22 @@ object App {
     /** Soft "update available" prompt from GitHub releases; throttled to once per 20 minutes. */
     fun checkLatestRelease() {
         val now = System.currentTimeMillis()
-        if (now - prefs.getLong("rel_chk", 0L) < 20 * 60_000L) return
+        if (now - prefs.getLong("rel_chk", 0L) < 5 * 60_000L) return
         scope.launch {
             val n = Api.latestBuild() ?: return@launch
             prefs.edit().putLong("rel_chk", System.currentTimeMillis()).putInt("rel_n", n).apply()
             applyRelease(n)
         }
     }
+    private var supaForce = false
+    private var relForce = false
     private fun applyRelease(n: Int) {
         newBuild = if (n > versionCode()) n else 0
         newBuildDismissed = prefs.getInt("rel_dismissed", 0) >= n
+        // any newer published build is mandatory
+        relForce = newBuild > 0
+        if (relForce) { updateUrl = newBuildUrl(); updateMsg = "A new version of Xcluice is required to continue. Update now to keep chatting and posting." }
+        updateRequired = supaForce || relForce
     }
     fun dismissNewBuild() { prefs.edit().putInt("rel_dismissed", newBuild).apply(); newBuildDismissed = true }
     fun newBuildUrl() = "https://github.com/Xcluice/Xcluice/releases/download/android-build-$newBuild/Xcluice.apk"
@@ -141,9 +147,10 @@ object App {
         if (android.os.Build.VERSION.SDK_INT >= 28) pi.longVersionCode else @Suppress("DEPRECATION") pi.versionCode.toLong()
     }.getOrDefault(Long.MAX_VALUE)
     private fun applyUpdate(min: Int, url: String, msg: String) {
-        updateUrl = url.ifBlank { "https://github.com/Xcluice/Xcluice/releases/latest/download/Xcluice.apk" }
-        if (msg.isNotBlank()) updateMsg = msg
-        updateRequired = min > 0 && versionCode() < min
+        if (!relForce) updateUrl = url.ifBlank { "https://github.com/Xcluice/Xcluice/releases/latest/download/Xcluice.apk" }
+        if (msg.isNotBlank() && !relForce) updateMsg = msg
+        supaForce = min > 0 && versionCode() < min
+        updateRequired = supaForce || relForce
     }
     /** Fetches the remote minimum version; falls back to the last known config when offline so the gate can't be bypassed. */
     fun checkUpdate() {
