@@ -37,6 +37,8 @@ object Updater {
             try {
                 val dir = File(app.cacheDir, "updates").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
                 val out = File(dir, "Xcluice.apk")
+                if (tryPatch(app, url, out)) { progress = 2f; install(app, out); return@launch }
+                progress = 0f
                 Api.http.newCall(Request.Builder().url(url).build()).execute().use { r ->
                     if (!r.isSuccessful) throw RuntimeException("HTTP " + r.code)
                     val body = r.body ?: throw RuntimeException("empty")
@@ -59,6 +61,28 @@ object Updater {
             } finally { running = false }
         }
     }
+
+    /** Incremental update: fetch patch-from-<installed build> (a few hundred KB), apply to the installed APK. */
+    private fun tryPatch(app: Context, url: String, out: File): Boolean = try {
+        @Suppress("DEPRECATION")
+        val cur = app.packageManager.getPackageInfo(app.packageName, 0).versionCode
+        val purl = url.substringBeforeLast('/') + "/patch-from-$cur.bin"
+        val data = Api.http.newCall(Request.Builder().url(purl).build()).execute().use { r ->
+            if (!r.isSuccessful) return@use null
+            val body = r.body ?: return@use null
+            val total = body.contentLength().coerceAtLeast(1L)
+            val bo = java.io.ByteArrayOutputStream()
+            body.byteStream().use { ins ->
+                val buf = ByteArray(32 * 1024); var got = 0L
+                while (true) { val n = ins.read(buf); if (n < 0) break; bo.write(buf, 0, n); got += n; progress = (got.toFloat() / total * 0.9f).coerceIn(0f, 0.9f) }
+            }
+            bo.toByteArray()
+        }
+        if (data == null) false else {
+            BsPatch.apply(File(app.applicationInfo.sourceDir), data, out)
+            true
+        }
+    } catch (e: Throwable) { out.delete(); false }
 
     fun install(app: Context, f: File) {
         val uri = FileProvider.getUriForFile(app, app.packageName + ".fileprovider", f)

@@ -25,14 +25,34 @@ jobs:
         run: |
           set -o pipefail
           gradle assembleRelease --no-daemon --stacktrace -PbuildNum=${{ github.run_number }} 2>&1 | tee build.log
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk Xcluice.apk
+      - name: Repack (stored dex), sign, align
+        run: |
+          set -e
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          python3 android/tools/store_dex.py android/app/build/outputs/apk/release/app-release.apk stored.apk
+          $BT/zipalign -p -f 4 stored.apk aligned.apk
+          $BT/apksigner sign --ks android/app/release.jks --ks-pass pass:xcluice2026 --key-pass pass:xcluice2026 --ks-key-alias key --min-sdk-version 26 --out Xcluice.apk aligned.apk
+          $BT/apksigner verify Xcluice.apk
+          ls -l Xcluice.apk
+      - name: Incremental patches
+        run: |
+          pip install bsdiff4 >/dev/null
+          N=${{ github.run_number }}
+          for M in $(seq $((N-1)) -1 $((N-10))); do
+            [ $M -ge 1 ] || break
+            curl -fsSL -o old.apk "https://github.com/Xcluice/Xcluice/releases/download/android-build-$M/Xcluice.apk" || continue
+            python3 -c "import zipfile,sys;z=zipfile.ZipFile('old.apk');sys.exit(0 if z.getinfo('classes.dex').compress_type==0 else 1)" || { echo "build $M not diffable"; continue; }
+            python3 android/tools/make_patch.py old.apk Xcluice.apk patch-from-$M.bin || true
+          done
+          ls -l patch-from-*.bin || true
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-build-${{ github.run_number }}
           name: Xcluice app build ${{ github.run_number }}
-          files: Xcluice.apk
+          files: |
+            Xcluice.apk
+            patch-from-*.bin
       - name: Collect errors
         if: failure()
         run: |
