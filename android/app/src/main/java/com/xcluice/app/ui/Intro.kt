@@ -159,25 +159,4 @@ private fun DrawScope.drawIntro(t: Float) {
             lerpO(tm, bm, -0.7f), lerpO(tm, bm, 1.7f), 2.5f.dp.toPx(), StrokeCap.Round
         )
     }
-
-    // orbiting satellites
-    val half = minDim * 0.17f
-    val orb = easeOut((t - 0.5f) / 0.2f)
-    if (orb > 0f) {
-        for (i in 0 until 3) {
-            val ang = t * 2f * PI.toFloat() * 1.6f + i * (2f * PI.toFloat() / 3f)
-            val rr = half * 2.05f * orb
-            drawCircle(Color.White, 5.dp.toPx(), Offset(cx + cos(ang) * rr, cy + sin(ang) * rr))
-        }
-        drawCircle(Color.White.copy(alpha = 0.18f * orb), half * 2.05f * orb, Offset(cx, cy), style = Stroke(1.5f.dp.toPx()))
-    }
-
-    // shockwave at the moment of the cut
-    val q = (t - 0.40f) / 0.60f
-    if (q > 0f) {
-        val e = easeOut(q)
-        val maxR = size.maxDimension * 0.7f
-        drawCircle(Color.White.copy(alpha = 1f - e), maxR * e, Offset(cx, cy), style = Stroke(3.dp.toPx() * (1f - e) + 0.5f))
-        drawCircle(Color.White.copy(alpha = (1f - e) * 0.5f), maxR * 0.7f * easeOut(q * 0.9f), Offset(cx, cy), style = Stroke(1.5f.dp.toPx()))
-    }
 }

@@ -40,7 +40,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
             }
             Box(Modifier.pressable(true, 0.92f) { App.dismissNewBuild() }.clip(CircleShape).padding(horizontal = 10.dp, vertical = 8.dp)) { T("Later", 13.sp, FontWeight.SemiBold, Muted) }
             Box(Modifier.pressable(true, 0.92f) {
-                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(App.newBuildUrl())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                com.xcluice.app.data.Updater.start(ctx, App.newBuildUrl())
             }.clip(CircleShape).background(Color.White).padding(horizontal = 16.dp, vertical = 9.dp)) { T("Update", 13.sp, FontWeight.Bold, Color.Black) }
         }
     }

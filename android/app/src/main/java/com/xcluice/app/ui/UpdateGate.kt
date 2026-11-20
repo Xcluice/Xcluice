@@ -42,8 +42,18 @@ fun UpdateGate() {
         Spacer(Modifier.height(10.dp))
         T(App.updateMsg.ifBlank { "A new version of Xcluice is required to continue." }, 15.sp, color = Muted, align = TextAlign.Center, lineHeight = 22.sp)
         Spacer(Modifier.height(32.dp))
-        BtnWhite("Update now", Modifier.fillMaxWidth()) {
-            runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(App.updateUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val pr = com.xcluice.app.data.Updater.progress
+        if (pr in 0f..0.995f) {
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Glass)) {
+                Box(Modifier.fillMaxWidth(pr).fillMaxHeight().clip(CircleShape).background(Color.White))
+            }
+            Spacer(Modifier.height(10.dp))
+            T("Downloading ${(pr * 100).toInt()}%", 13.sp, color = Muted)
+        } else {
+            BtnWhite(if (pr >= 2f) "Install" else "Update now", Modifier.fillMaxWidth()) {
+                if (pr >= 2f) com.xcluice.app.data.Updater.reinstall(ctx) else com.xcluice.app.data.Updater.start(ctx, App.updateUrl)
+            }
         }
+        com.xcluice.app.data.Updater.error?.let { Spacer(Modifier.height(12.dp)); T(it, 12.sp, color = Muted, align = TextAlign.Center) }
     }
 }

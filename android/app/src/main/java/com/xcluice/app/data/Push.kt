@@ -44,7 +44,7 @@ class NotifyService : Service() {
             )
         }
         val n: Notification = NotificationCompat.Builder(this, CH)
-            .setSmallIcon(R.drawable.ic_notif).setContentTitle("Xcluice")
+            .setSmallIcon(R.drawable.ic_notif).setColor(0xFF00E5FF.toInt()).setContentTitle("Xcluice")
             .setContentText("Listening for new messages").setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN).build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(1, n)

@@ -54,7 +54,7 @@ object Notifier {
             val style = NotificationCompat.InboxStyle()
             texts.takeLast(5).forEach { style.addLine(it) }
             val n = NotificationCompat.Builder(ctx, CH_MSG)
-                .setSmallIcon(R.drawable.ic_notif).setContentTitle(name)
+                .setSmallIcon(R.drawable.ic_notif).setColor(0xFF00E5FF.toInt()).setContentTitle(name)
                 .setContentText(texts.last()).setStyle(if (texts.size > 1) style else null)
                 .setNumber(texts.size).setAutoCancel(true).setContentIntent(open(ctx, 1))
                 .setPriority(NotificationCompat.PRIORITY_HIGH).build()
@@ -65,7 +65,7 @@ object Notifier {
     fun postText(ctx: Context, title: String, text: String) {
         if (!allowed(ctx)) return
         val n = NotificationCompat.Builder(ctx, CH_POST)
-            .setSmallIcon(R.drawable.ic_notif).setContentTitle(title).setContentText(text)
+            .setSmallIcon(R.drawable.ic_notif).setColor(0xFF00E5FF.toInt()).setContentTitle(title).setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true).setContentIntent(open(ctx, 0)).build()
         runCatching { NotificationManagerCompat.from(ctx).notify(7001, n) }
@@ -77,7 +77,7 @@ object Notifier {
         val title = if (items.size == 1) "New post from ${p.authorName}" else "${items.size} new posts"
         val text = if (items.size == 1) p.headline else items.take(3).joinToString(" • ") { it.headline }
         val n = NotificationCompat.Builder(ctx, CH_POST)
-            .setSmallIcon(R.drawable.ic_notif).setContentTitle(title).setContentText(text)
+            .setSmallIcon(R.drawable.ic_notif).setColor(0xFF00E5FF.toInt()).setContentTitle(title).setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true).setContentIntent(open(ctx, 0)).build()
         runCatching { NotificationManagerCompat.from(ctx).notify(7001, n) }
