@@ -470,6 +470,13 @@ object Api {
         return if (t.isBlank() || t == "null") null else t
     }
 
+    /** (minVersionCode, apkUrl, message) or null when unreachable. */
+    suspend fun updateConfig(): Triple<Int, String, String>? {
+        val a = getArr("/rest/v1/app_update?id=eq.1&select=min_version_code,apk_url,message") ?: return null
+        val o = a.optJSONObject(0) ?: return Triple(0, "", "")
+        return Triple(o.optInt("min_version_code", 0), o.optString("apk_url", ""), o.optString("message", ""))
+    }
+
     suspend fun blocks(uid: String): Set<String>? {
         val a = getArr("/rest/v1/chat_blocks?uid=eq.${enc(uid)}&select=blocked_uid") ?: return null
         return (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("blocked_uid") }.toSet()

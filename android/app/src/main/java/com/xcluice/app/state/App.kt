@@ -115,6 +115,29 @@ object App {
     private var loopJob: Job? = null
     private var rt: Realtime? = null
 
+    var updateRequired by mutableStateOf(false)
+    var updateUrl by mutableStateOf("")
+    var updateMsg by mutableStateOf("")
+    private fun versionCode(): Long = runCatching {
+        val pi = appCtx.packageManager.getPackageInfo(appCtx.packageName, 0)
+        if (android.os.Build.VERSION.SDK_INT >= 28) pi.longVersionCode else @Suppress("DEPRECATION") pi.versionCode.toLong()
+    }.getOrDefault(Long.MAX_VALUE)
+    private fun applyUpdate(min: Int, url: String, msg: String) {
+        updateUrl = url.ifBlank { "https://github.com/Xcluice/Xcluice/releases/latest/download/Xcluice.apk" }
+        if (msg.isNotBlank()) updateMsg = msg
+        updateRequired = min > 0 && versionCode() < min
+    }
+    /** Fetches the remote minimum version; falls back to the last known config when offline so the gate can't be bypassed. */
+    fun checkUpdate() {
+        scope.launch {
+            val r = Api.updateConfig()
+            if (r != null) {
+                prefs.edit().putInt("upd_min", r.first).putString("upd_url", r.second).putString("upd_msg", r.third).apply()
+                applyUpdate(r.first, r.second, r.third)
+            }
+        }
+    }
+
     private var inited = false
     fun ensureInit(ctx: Context) { if (!inited) init(ctx) }
 
@@ -199,6 +222,8 @@ object App {
         runCatching {
             prefs.getString("c_posts", null)?.let { raw -> val l = Api.parsePostsPublic(JSONArray(raw)); if (l.isNotEmpty()) { posts = l.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs }); ready = true } }
         }
+        applyUpdate(prefs.getInt("upd_min", 0), prefs.getString("upd_url", "") ?: "", prefs.getString("upd_msg", "") ?: "")
+        checkUpdate()
         guest = prefs.getBoolean("guest", false)
         scope.launch {
             val u = user
@@ -333,6 +358,7 @@ object App {
 
     /** Called every time the app comes to the foreground. */
     fun onOpen() {
+        checkUpdate()
         if (firstOpen) { firstOpen = false; return }
         if (!ready) return
         scope.launch {

@@ -117,6 +117,7 @@ private fun Root() {
                 else -> MainShell()
             }
         }
+        if (App.updateRequired) androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().zIndex(50f)) { com.xcluice.app.ui.UpdateGate() }
         Toast()
     }
 }
