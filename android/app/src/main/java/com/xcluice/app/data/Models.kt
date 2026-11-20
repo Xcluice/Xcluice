@@ -5,8 +5,8 @@ import androidx.compose.runtime.setValue
 import java.time.OffsetDateTime
 
 object Cfg {
-    const val SB = "https://nzolsmouyulzqeaocejm.supabase.co"
-    const val KEY = "sb_publishable_EGX3jDjRh5LiXjdTw2AXxA_e1YIaP4Q"
+    const val SB = "https://wwtuuhugmgvopmlrgery.supabase.co"
+    const val KEY = "sb_publishable_iJjSbOidy7ysX7wQ6pij6Q_fK3YHyGN"
     const val BUCKET = "homework-files"
     const val SITE = "https://xcluice.vercel.app"
     const val AUTH_DOMAIN = "mailinator.com"

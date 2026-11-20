@@ -43,7 +43,7 @@ class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit) {
     }
 
     private suspend fun connect(accessToken: String?) {
-        val url = "wss://nzolsmouyulzqeaocejm.supabase.co/realtime/v1/websocket?apikey=${Cfg.KEY}&vsn=1.0.0"
+        val url = "wss://wwtuuhugmgvopmlrgery.supabase.co/realtime/v1/websocket?apikey=${Cfg.KEY}&vsn=1.0.0"
         val closed = kotlinx.coroutines.CompletableDeferred<Unit>()
         val listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
