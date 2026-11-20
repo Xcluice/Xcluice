@@ -118,6 +118,7 @@ private fun Root() {
             }
         }
         if (App.updateRequired) androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().zIndex(50f)) { com.xcluice.app.ui.UpdateGate() }
+        com.xcluice.app.ui.UpdateBanner(Modifier.align(Alignment.TopCenter).zIndex(40f))
         Toast()
     }
 }

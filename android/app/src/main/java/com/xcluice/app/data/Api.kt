@@ -470,6 +470,19 @@ object Api {
         return if (t.isBlank() || t == "null") null else t
     }
 
+    /** Highest published android-build-N on GitHub (public API, nothing touches Supabase). */
+    suspend fun latestBuild(): Int? = withContext(Dispatchers.IO) {
+        try {
+            val r = Request.Builder().url("https://api.github.com/repos/Xcluice/Xcluice/releases?per_page=15")
+                .header("Accept", "application/vnd.github+json").build()
+            http.newCall(r).execute().use { res ->
+                if (!res.isSuccessful) return@use null
+                val a = JSONArray(res.body?.string() ?: "[]")
+                (0 until a.length()).mapNotNull { a.getJSONObject(it).optString("tag_name").removePrefix("android-build-").takeIf { t -> t.all(Char::isDigit) && t.isNotEmpty() }?.toIntOrNull() }.maxOrNull()
+            }
+        } catch (e: Exception) { null }
+    }
+
     /** (minVersionCode, apkUrl, message) or null when unreachable. */
     suspend fun updateConfig(): Triple<Int, String, String>? {
         val a = getArr("/rest/v1/app_update?id=eq.1&select=min_version_code,apk_url,message") ?: return null

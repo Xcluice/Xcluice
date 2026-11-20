@@ -118,6 +118,24 @@ object App {
     var updateRequired by mutableStateOf(false)
     var updateUrl by mutableStateOf("")
     var updateMsg by mutableStateOf("")
+    var newBuild by mutableStateOf(0)
+    var newBuildDismissed by mutableStateOf(false)
+    /** Soft "update available" prompt from GitHub releases; throttled to once per 20 minutes. */
+    fun checkLatestRelease() {
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("rel_chk", 0L) < 20 * 60_000L) return
+        scope.launch {
+            val n = Api.latestBuild() ?: return@launch
+            prefs.edit().putLong("rel_chk", System.currentTimeMillis()).putInt("rel_n", n).apply()
+            applyRelease(n)
+        }
+    }
+    private fun applyRelease(n: Int) {
+        newBuild = if (n > versionCode()) n else 0
+        newBuildDismissed = prefs.getInt("rel_dismissed", 0) >= n
+    }
+    fun dismissNewBuild() { prefs.edit().putInt("rel_dismissed", newBuild).apply(); newBuildDismissed = true }
+    fun newBuildUrl() = "https://github.com/Xcluice/Xcluice/releases/download/android-build-$newBuild/Xcluice.apk"
     private fun versionCode(): Long = runCatching {
         val pi = appCtx.packageManager.getPackageInfo(appCtx.packageName, 0)
         if (android.os.Build.VERSION.SDK_INT >= 28) pi.longVersionCode else @Suppress("DEPRECATION") pi.versionCode.toLong()
@@ -223,6 +241,8 @@ object App {
             prefs.getString("c_posts", null)?.let { raw -> val l = Api.parsePostsPublic(JSONArray(raw)); if (l.isNotEmpty()) { posts = l.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs }); ready = true } }
         }
         applyUpdate(prefs.getInt("upd_min", 0), prefs.getString("upd_url", "") ?: "", prefs.getString("upd_msg", "") ?: "")
+        applyRelease(prefs.getInt("rel_n", 0))
+        checkLatestRelease()
         checkUpdate()
         guest = prefs.getBoolean("guest", false)
         scope.launch {
@@ -359,6 +379,7 @@ object App {
     /** Called every time the app comes to the foreground. */
     fun onOpen() {
         checkUpdate()
+        checkLatestRelease()
         if (firstOpen) { firstOpen = false; return }
         if (!ready) return
         scope.launch {
