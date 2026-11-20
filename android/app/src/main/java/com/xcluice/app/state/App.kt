@@ -41,6 +41,8 @@ class Confirm(val msg: String, val ok: String, val danger: Boolean, val onOk: ()
 
 object App {
     private lateinit var prefs: SharedPreferences
+    /** Non-secret caches (chat, posts, outbox): plain prefs avoid slow Keystore encryption on every write. */
+    private lateinit var cache: SharedPreferences
     lateinit var appCtx: Context
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -216,11 +218,15 @@ object App {
         inited = true
         appCtx = ctx.applicationContext
         prefs = securePrefs(ctx)
+        cache = ctx.getSharedPreferences("xcache", Context.MODE_PRIVATE)
+        // one-time move of existing encrypted caches
+        if (!cache.contains("moved")) { cache.edit().apply { for (k in listOf("c_users","c_msgs","c_posts","outbox","blocks")) prefs.getString(k, null)?.let { putString(k, it) }; putBoolean("moved", true) }.apply() }
         migrateLegacyPrefs(ctx)
         runCatching { val a = JSONArray(prefs.getString("seen", "[]")); seen = (0 until a.length()).map { a.getLong(it) }.toSet() }
         // sessions from a previous backend (e.g. the old Sydney project) are invalid here: force a fresh sign-in
         if (prefs.getString("backend", null) != Cfg.SB) {
-            prefs.edit().remove("access").remove("refresh").remove("exp").remove("user").remove("c_users").remove("c_msgs").remove("c_posts").remove("blocks").remove("outbox").remove("rel_chk").putString("backend", Cfg.SB).apply()
+            prefs.edit().remove("access").remove("refresh").remove("exp").remove("user").remove("rel_chk").putString("backend", Cfg.SB).apply()
+            cache.edit().clear().apply()
         }
         Api.token = prefs.getString("access", null)
         Api.refreshToken = prefs.getString("refresh", null)
@@ -237,19 +243,19 @@ object App {
         if (Api.refreshToken == null) user = null
         if (user != null) {
             runCatching {
-                blocked = JSONArray(prefs.getString("blocks", "[]")).let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
-                JSONArray(prefs.getString("c_users", "[]")).let { a ->
+                blocked = JSONArray(cache.getString("blocks", "[]")).let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
+                JSONArray(cache.getString("c_users", "[]")).let { a ->
                     chatUsers = (0 until a.length()).map { val o = a.getJSONObject(it); ChatUser(o.optString("u"), o.optString("n"), o.optString("e"), if (o.isNull("p")) null else o.optString("p"), if (o.isNull("l")) null else o.optString("l")) }
                     if (chatUsers.isNotEmpty()) chatUsersLoaded = true
                 }
-                JSONArray(prefs.getString("c_msgs", "[]")).let { a ->
+                JSONArray(cache.getString("c_msgs", "[]")).let { a ->
                     val l = (0 until a.length()).map { val o = a.getJSONObject(it); Msg(o.getLong("i"), o.optString("u"), o.optString("n"), o.optString("t"), if (o.isNull("o")) null else o.optString("o"), if (o.isNull("r")) null else o.optLong("r"), o.optString("c"), o.optLong("m")) }
                     if (l.isNotEmpty()) { messages = l; l.forEach { seenIds.add(it.id) }; lastId = l.maxOf { it.id } }
                 }
             }
         }
         runCatching {
-            prefs.getString("c_posts", null)?.let { raw -> val l = Api.parsePostsPublic(JSONArray(raw)); if (l.isNotEmpty()) { posts = l.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs }); ready = true } }
+            cache.getString("c_posts", null)?.let { raw -> val l = Api.parsePostsPublic(JSONArray(raw)); if (l.isNotEmpty()) { posts = l.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs }); ready = true } }
         }
         applyUpdate(prefs.getInt("upd_min", 0), prefs.getString("upd_url", "") ?: "", prefs.getString("upd_msg", "") ?: "")
         applyRelease(prefs.getInt("rel_n", 0))
@@ -311,7 +317,7 @@ object App {
         scope.launch { Api.clearSession(); saveSession() }
         user = null; guest = false; thread = null; tab = 0
         messages = emptyList(); reactions = emptyList(); chatUsers = emptyList(); chatUsersLoaded = false; blocked = emptySet()
-        prefs.edit().remove("c_users").remove("c_msgs").remove("blocks").apply()
+        cache.edit().remove("c_users").remove("c_msgs").remove("blocks").apply()
         follows = emptyList(); stories = emptyList(); storyQueue = null; profile = null
         liked = emptySet(); seenIds.clear(); renderedIds.clear(); lastId = null
         prefs.edit().remove("user").putBoolean("guest", false).apply()
@@ -419,7 +425,7 @@ object App {
             if (posts.isNotEmpty()) toast("Couldn't refresh posts \u00B7 " + netMsg())
         } else {
             postsError = null
-            Api.lastPostsRaw?.let { r -> prefs.edit().putString("c_posts", r).apply() }
+            Api.lastPostsRaw?.let { r -> cache.edit().putString("c_posts", r).apply() }
             val seen = rows.map { it.id }.toSet()
             val all = rows + pins.filter { it.id !in seen }
             posts = all.sortedWith(compareByDescending<Post> { it.pinned }.thenByDescending { it.createdMs })
@@ -635,10 +641,15 @@ object App {
     private fun startChat() {
         if (loopsOn) return
         loopsOn = true
-        rt = Realtime { from, to ->
-            val me = user?.id
-            if (me != null && to == me) scope.launch { typingFrom[from] = System.currentTimeMillis() }
-        }
+        rt = Realtime(
+            onTyping = { from, to ->
+                val me = user?.id
+                if (me != null && to == me) scope.launch { typingFrom[from] = System.currentTimeMillis() }
+            },
+            onChange = { table ->
+                scope.launch { if (table == "chat_messages") fetchMessages() else if (table == "chat_reactions") syncState() }
+            }
+        )
         rt?.start(Api.token)
         loopJob = scope.launch {
             coroutineScope {
@@ -652,8 +663,9 @@ object App {
                 delay(1000)
                 t++
                 tick = System.currentTimeMillis()
-                if (t % 2 == 0) scope.launch { fetchMessages() }
-                if (t % 12 == 0) scope.launch { syncState() }
+                if (t % 8 == 0) scope.launch { fetchMessages() }
+                if (t % 30 == 0) scope.launch { syncState() }
+                if (t % 30 == 15) scope.launch { Api.keepFresh() }
                 if (t % 25 == 0) user?.let { Api.presence(it) }
                 if (t % 15 == 0) fetchUsers()
                 if (t % 60 == 0) loadSocial()
@@ -671,27 +683,27 @@ object App {
             runCatching {
                 val ua = JSONArray(); us.forEach { ua.put(JSONObject().put("u", it.uid).put("n", it.name).put("e", it.email).put("p", it.photo ?: JSONObject.NULL).put("l", it.lastActive ?: JSONObject.NULL)) }
                 val ma = JSONArray(); ms.forEach { ma.put(JSONObject().put("i", it.id).put("u", it.uid).put("n", it.name).put("t", it.text).put("o", it.toUid ?: JSONObject.NULL).put("r", it.replyTo ?: JSONObject.NULL).put("c", it.createdAt).put("m", it.createdMs)) }
-                prefs.edit().putString("c_users", ua.toString()).putString("c_msgs", ma.toString()).apply()
+                cache.edit().putString("c_users", ua.toString()).putString("c_msgs", ma.toString()).apply()
             }
         }
     }
 
     private suspend fun loadBlocks() {
         val me = user?.id ?: return
-        Api.blocks(me)?.let { blocked = it; prefs.edit().putString("blocks", JSONArray(it.toList()).toString()).apply() }
+        Api.blocks(me)?.let { blocked = it; cache.edit().putString("blocks", JSONArray(it.toList()).toString()).apply() }
     }
 
     fun blockContact(uid: String, name: String) {
         val me = user?.id ?: return
         blocked = blocked + uid
-        prefs.edit().putString("blocks", JSONArray(blocked.toList()).toString()).apply()
+        cache.edit().putString("blocks", JSONArray(blocked.toList()).toString()).apply()
         scope.launch { if (Api.blockUser(me, uid)) toast("$name blocked") else { blocked = blocked - uid; toast("Couldn't block") } }
     }
 
     fun unblockContact(uid: String, name: String) {
         val me = user?.id ?: return
         blocked = blocked - uid
-        prefs.edit().putString("blocks", JSONArray(blocked.toList()).toString()).apply()
+        cache.edit().putString("blocks", JSONArray(blocked.toList()).toString()).apply()
         scope.launch { if (Api.unblockUser(me, uid)) toast("$name unblocked") else { blocked = blocked + uid; toast("Couldn't unblock") } }
     }
 
@@ -700,7 +712,9 @@ object App {
         if (rows.isEmpty()) { return }
         val fresh = rows.filter { seenIds.add(it.id) }
         if (fresh.isEmpty()) return
-        messages = messages.filter { !it.temp } + fresh
+        val me = user?.id
+        val pending = messages.filter { t -> t.temp && fresh.none { f -> f.uid == me && f.toUid == t.toUid && f.text == t.text } }
+        messages = messages.filter { !it.temp } + fresh + pending
         lastId = rows.last().id
         cacheChat()
         notifyFresh(fresh)
@@ -752,21 +766,21 @@ object App {
         scope.launch { deliver(u, tid, text, to, rep?.id) }
     }
 
-    private fun outboxLoad(): JSONArray = runCatching { JSONArray(prefs.getString("outbox", "[]")) }.getOrDefault(JSONArray())
+    private fun outboxLoad(): JSONArray = runCatching { JSONArray(cache.getString("outbox", "[]")) }.getOrDefault(JSONArray())
     private fun outboxAdd(tid: Long, text: String, to: String, reply: Long?, startMs: Long) {
         val a = outboxLoad(); a.put(JSONObject().put("i", tid).put("t", text).put("to", to).put("r", reply ?: JSONObject.NULL).put("s", startMs))
-        prefs.edit().putString("outbox", a.toString()).apply()
+        cache.edit().putString("outbox", a.toString()).apply()
     }
     private fun outboxRemove(tid: Long) {
         val a = outboxLoad(); val n = JSONArray()
         for (i in 0 until a.length()) if (a.getJSONObject(i).optLong("i") != tid) n.put(a.getJSONObject(i))
-        prefs.edit().putString("outbox", n.toString()).apply()
+        cache.edit().putString("outbox", n.toString()).apply()
     }
     /** Re-sends anything still queued from a previous session (WhatsApp-style: messages wait for the network, never time out). */
     private fun resumeOutbox() {
         val u = user ?: return
         val a = outboxLoad(); if (a.length() == 0) return
-        prefs.edit().putString("outbox", "[]").apply()
+        cache.edit().putString("outbox", "[]").apply()
         for (i in 0 until a.length()) {
             val o = a.getJSONObject(i)
             val tid = tempSeq--; val to = o.optString("to"); val text = o.optString("t")

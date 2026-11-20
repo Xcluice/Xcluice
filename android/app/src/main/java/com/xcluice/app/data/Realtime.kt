@@ -14,7 +14,7 @@ import okhttp3.WebSocketListener
 import org.json.JSONObject
 
 /** Minimal Supabase Realtime (Phoenix) client, only for the "xc-typing" broadcast channel. */
-class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit) {
+class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit, private val onChange: (table: String) -> Unit = {}) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var ws: WebSocket? = null
     private var job: Job? = null
@@ -29,8 +29,8 @@ class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit) {
         alive = true
         job = scope.launch {
             while (isActive && alive) {
-                connect(accessToken)
-                delay(6000)
+                connect(Api.token ?: accessToken)
+                delay(1500)
             }
         }
     }
@@ -51,7 +51,9 @@ class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit) {
                     .put("config", JSONObject()
                         .put("broadcast", JSONObject().put("self", false))
                         .put("presence", JSONObject().put("key", ""))
-                        .put("postgres_changes", org.json.JSONArray()))
+                        .put("postgres_changes", org.json.JSONArray()
+                            .put(JSONObject().put("event", "INSERT").put("schema", "public").put("table", "chat_messages"))
+                            .put(JSONObject().put("event", "*").put("schema", "public").put("table", "chat_reactions"))))
                 if (accessToken != null) cfg.put("access_token", accessToken)
                 val msg = JSONObject().put("topic", topic).put("event", "phx_join")
                     .put("payload", cfg).put("ref", "1").put("join_ref", "1")
@@ -61,6 +63,10 @@ class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit) {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 runCatching {
                     val o = JSONObject(text)
+                    if (o.optString("event") == "postgres_changes") {
+                        val tbl = o.optJSONObject("payload")?.optJSONObject("data")?.optString("table") ?: ""
+                        if (tbl.isNotEmpty()) onChange(tbl)
+                    }
                     if (o.optString("event") == "broadcast") {
                         val p = o.optJSONObject("payload") ?: return
                         if (p.optString("event") == "typing") {
@@ -83,7 +89,9 @@ class Realtime(private val onTyping: (fromUid: String, toUid: String) -> Unit) {
                 ws?.send(m.toString())
             }
         }
+        val renew = scope.launch { delay(50 * 60_000L); runCatching { ws?.close(1000, "renew") }; closed.complete(Unit) }
         closed.await()
+        renew.cancel()
         hb.cancel()
     }
 

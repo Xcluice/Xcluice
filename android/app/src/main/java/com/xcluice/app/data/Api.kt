@@ -25,6 +25,7 @@ object Api {
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .pingInterval(20, TimeUnit.SECONDS)
+        .connectionPool(okhttp3.ConnectionPool(8, 10, TimeUnit.MINUTES))
         .build()
 
     private val JSON_T = "application/json".toMediaType()
@@ -58,6 +59,11 @@ object Api {
             if (res.first in 200..299) applySession(JSONObject(res.second))
             else if (res.first == 400 || res.first == 401) { token = null; refreshToken = null; onSession?.invoke() }
         }
+    }
+
+    /** Refresh the access token ahead of time so sends never wait on a token round-trip. */
+    suspend fun keepFresh() {
+        if (refreshToken != null && System.currentTimeMillis() > expiresAt - 600_000) refreshIfNeeded(true)
     }
 
     private fun applySession(o: JSONObject) {
