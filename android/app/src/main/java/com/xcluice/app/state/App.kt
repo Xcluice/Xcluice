@@ -310,6 +310,7 @@ object App {
     private var bootedFor: String? = null
 
     private suspend fun bootData() {
+        resumeOutbox()
         val key = user?.id ?: "guest"
         if (bootedFor == key && posts.isNotEmpty()) { ready = true; return }
         bootedFor = key
@@ -740,11 +741,51 @@ object App {
         scope.launch { deliver(u, tid, text, to, rep?.id) }
     }
 
-    private suspend fun deliver(u: User, tid: Long, text: String, to: String, replyId: Long?) {
-        val saved = Api.sendMessage(u.id, u.displayName, text, to, replyId?.takeIf { it > 0 })
-        if (saved == null) {
-            messages = messages.filter { it.id != tid }; toast("Message not sent"); return
+    private fun outboxLoad(): JSONArray = runCatching { JSONArray(prefs.getString("outbox", "[]")) }.getOrDefault(JSONArray())
+    private fun outboxAdd(tid: Long, text: String, to: String, reply: Long?, startMs: Long) {
+        val a = outboxLoad(); a.put(JSONObject().put("i", tid).put("t", text).put("to", to).put("r", reply ?: JSONObject.NULL).put("s", startMs))
+        prefs.edit().putString("outbox", a.toString()).apply()
+    }
+    private fun outboxRemove(tid: Long) {
+        val a = outboxLoad(); val n = JSONArray()
+        for (i in 0 until a.length()) if (a.getJSONObject(i).optLong("i") != tid) n.put(a.getJSONObject(i))
+        prefs.edit().putString("outbox", n.toString()).apply()
+    }
+    /** Re-sends anything still queued from a previous session (WhatsApp-style: messages wait for the network, never time out). */
+    private fun resumeOutbox() {
+        val u = user ?: return
+        val a = outboxLoad(); if (a.length() == 0) return
+        prefs.edit().putString("outbox", "[]").apply()
+        for (i in 0 until a.length()) {
+            val o = a.getJSONObject(i)
+            val tid = tempSeq--; val to = o.optString("to"); val text = o.optString("t")
+            val rep = if (o.isNull("r")) null else o.optLong("r")
+            val start = o.optLong("s", System.currentTimeMillis())
+            messages = messages + Msg(tid, u.id, u.displayName, text, to, rep, java.time.Instant.ofEpochMilli(start).toString(), start, true)
+            scope.launch { deliver(u, tid, text, to, rep, start) }
         }
+    }
+
+    private suspend fun deliver(u: User, tid: Long, text: String, to: String, replyId: Long?, startMs: Long = System.currentTimeMillis()) {
+        outboxAdd(tid, text, to, replyId, startMs)
+        val since = java.time.Instant.ofEpochMilli(startMs - 5000).toString()
+        var attempt = 0
+        while (true) {
+            if (user?.id != u.id) return
+            if (attempt > 0) Api.findSent(u.id, to, text, since)?.let { finishSend(it, tid); return }
+            val (code, saved) = Api.sendMessageEx(u.id, u.displayName, text, to, replyId?.takeIf { it > 0 })
+            if (saved != null) { finishSend(saved, tid); return }
+            // permanent rejection (not a network/server problem): give up
+            if (code in 400..499 && code != 401 && code != 408 && code != 429) {
+                outboxRemove(tid); messages = messages.filter { it.id != tid }; toast("Couldn't send message"); return
+            }
+            attempt++
+            delay(minOf(1500L * attempt, 12_000L))
+        }
+    }
+
+    private fun finishSend(saved: Msg, tid: Long) {
+        outboxRemove(tid)
         seenIds.add(saved.id); renderedIds.add(saved.id)
         messages = if (messages.any { it.id == saved.id }) messages.filter { it.id != tid }
         else messages.map { if (it.id == tid) saved else it }
@@ -762,9 +803,13 @@ object App {
         messages = messages + Msg(tid, u.id, u.displayName, "[AUDIO::${f.absolutePath}#d=$d]", to, rep?.id, java.time.Instant.now().toString(), System.currentTimeMillis(), true)
         scope.launch {
             val bytes = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { f.readBytes() }.getOrNull() }
-            val url = bytes?.let { Api.upload("voice_${u.username}_${System.currentTimeMillis()}.m4a", "audio/mp4", it) }
-            if (url == null) {
-                messages = messages.filter { it.id != tid }; toast("Voice upload failed. Check your connection"); return@launch
+            if (bytes == null) { messages = messages.filter { it.id != tid }; toast("Couldn't read recording"); return@launch }
+            val fname = "voice_${u.username}_${System.currentTimeMillis()}.m4a"
+            var url: String? = null; var tries = 0
+            while (url == null) {
+                if (user?.id != u.id) return@launch
+                url = Api.upload(fname, "audio/mp4", bytes)
+                if (url == null) { tries++; delay(minOf(2000L * tries, 15_000L)) }
             }
             runCatching { f.delete() }
             deliver(u, tid, "[AUDIO::$url#d=$d]", to, rep?.id)

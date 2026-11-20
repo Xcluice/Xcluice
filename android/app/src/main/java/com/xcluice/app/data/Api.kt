@@ -277,7 +277,7 @@ object Api {
 
     suspend fun upload(name: String, mime: String, bytes: ByteArray): String? {
         val (c, _) = call {
-            req("/storage/v1/object/${Cfg.BUCKET}/$name").post(bytes.toRequestBody(mime.toMediaType()))
+            req("/storage/v1/object/${Cfg.BUCKET}/$name").header("x-upsert", "true").post(bytes.toRequestBody(mime.toMediaType()))
         }
         return if (c in 200..299) "${Cfg.SB}/storage/v1/object/public/${Cfg.BUCKET}/$name" else null
     }
@@ -337,6 +337,21 @@ object Api {
         val (c, b) = call { req("/rest/v1/chat_messages").header("Content-Type", "application/json").header("Prefer", "return=representation").post(jsonBody(o)) }
         if (c !in 200..299) return null
         return runCatching { parseMsgs(JSONArray(b)).firstOrNull() }.getOrNull()
+    }
+
+    /** Like sendMessage but also reports the HTTP code (-1 = network failure) so callers can retry. */
+    suspend fun sendMessageEx(uid: String, name: String, text: String, toUid: String?, replyTo: Long?): Pair<Int, Msg?> {
+        val o = JSONObject().put("uid", uid).put("name", name).put("text", text).put("to_uid", toUid ?: JSONObject.NULL)
+        if (replyTo != null) o.put("reply_to", replyTo)
+        val (c, b) = call { req("/rest/v1/chat_messages").header("Content-Type", "application/json").header("Prefer", "return=representation").post(jsonBody(o)) }
+        if (c !in 200..299) return c to null
+        return c to runCatching { parseMsgs(JSONArray(b)).firstOrNull() }.getOrNull()
+    }
+
+    /** A message that reached the server even though the response was lost (avoids duplicates on retry). */
+    suspend fun findSent(uid: String, toUid: String, text: String, sinceIso: String): Msg? {
+        val a = getArr("/rest/v1/chat_messages?uid=eq.${enc(uid)}&to_uid=eq.${enc(toUid)}&text=eq.${enc(text)}&created_at=gte.${enc(sinceIso)}&order=created_at.asc&limit=1") ?: return null
+        return parseMsgs(a).firstOrNull()
     }
 
     /** Deletes the row for everyone, then verifies it is really gone (a blocked delete still returns 2xx). */
