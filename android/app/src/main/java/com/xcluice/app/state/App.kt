@@ -218,6 +218,10 @@ object App {
         prefs = securePrefs(ctx)
         migrateLegacyPrefs(ctx)
         runCatching { val a = JSONArray(prefs.getString("seen", "[]")); seen = (0 until a.length()).map { a.getLong(it) }.toSet() }
+        // sessions from a previous backend (e.g. the old Sydney project) are invalid here: force a fresh sign-in
+        if (prefs.getString("backend", null) != Cfg.SB) {
+            prefs.edit().remove("access").remove("refresh").remove("exp").remove("user").remove("c_users").remove("c_msgs").remove("c_posts").remove("blocks").remove("outbox").remove("rel_chk").putString("backend", Cfg.SB).apply()
+        }
         Api.token = prefs.getString("access", null)
         Api.refreshToken = prefs.getString("refresh", null)
         Api.expiresAt = prefs.getLong("exp", 0L)
