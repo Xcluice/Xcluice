@@ -102,7 +102,7 @@ fun Intro(onDone: () -> Unit) {
 
 private fun lerpO(a: Offset, b: Offset, f: Float) = Offset(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f)
 
-private fun DrawScope.poly(c: Color, vararg p: Offset) {
+private fun DrawScope.poly(c: Color, p: List<Offset>) {
     val path = Path().apply {
         moveTo(p[0].x, p[0].y)
         for (i in 1 until p.size) lineTo(p[i].x, p[i].y)
@@ -131,7 +131,7 @@ private fun DrawScope.drawIntro(t: Float) {
         val l0 = lerpO(t0, b0, u0); val r0 = lerpO(t1, b1, u0)
         val l1 = lerpO(t0, b0, u1); val r1 = lerpO(t1, b1, u1)
         val m0 = lerpO(l0, r0, 0.5f); val m1 = lerpO(l1, r1, 0.5f)
-        poly(Color.White, lerpO(m0, l0, w), lerpO(m0, r0, w), lerpO(m1, r1, w), lerpO(m1, l1, w))
+        poly(Color.White, listOf(lerpO(m0, l0, w), lerpO(m0, r0, w), lerpO(m1, r1, w), lerpO(m1, l1, w)))
     }
 
     val s1 = easeOut((t - 0.05f) / 0.22f)        // "\" bar draws in
@@ -142,7 +142,7 @@ private fun DrawScope.drawIntro(t: Float) {
     val pulse = 1f + 0.07f * sin(PI.toFloat() * clamp01((t - 0.52f) / 0.2f))
 
     withTransform({ translate(shake, 0f); scale(pulse, pulse, Offset(cx, cy)) }) {
-        if (s1 > 0f) poly(Color.White, a, b, lerpO(b, d, s1), lerpO(a, c, s1))
+        if (s1 > 0f) poly(Color.White, listOf(a, b, lerpO(b, d, s1), lerpO(a, c, s1)))
         if (sweep > 0f) {
             band(0f, min(sweep, uA), 1f)
             band(uB, sweep, 1f)
